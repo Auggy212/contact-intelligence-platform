@@ -25,22 +25,83 @@ async def upload_document(
     session: AsyncSession = Depends(get_session),
     storage: StorageClient = Depends(get_storage),
 ):
+    filename = (file.filename or "").strip()
+    if not filename:
+        from app.core.exceptions import ValidationError
+        raise ValidationError("No filename received. Please select a file before uploading.")
+
     file_bytes = await file.read()
+    if len(file_bytes) == 0:
+        from app.core.exceptions import ValidationError
+        raise ValidationError(f"The file '{filename}' is empty. Please upload a valid .docx or .pdf file.")
+
     if len(file_bytes) > _MAX_SIZE_BYTES:
-        from app.core.exceptions import bad_request
-        raise bad_request(f"File exceeds maximum size of {_MAX_SIZE_BYTES // 1_048_576} MB")
+        size_mb = len(file_bytes) / 1_048_576
+        from app.core.exceptions import ValidationError
+        raise ValidationError(
+            f"'{filename}' is {size_mb:.1f} MB, which exceeds the {_MAX_SIZE_BYTES // 1_048_576} MB limit. "
+            "Please compress the file or split it into smaller parts."
+        )
 
     svc = DocumentService(session, storage, uuid.UUID(tenant_id), uuid.UUID(user_id))
     pf = await svc.upload(
         project_id=project_id,
         file_role=file_role,
-        filename=file.filename or "document",
+        filename=filename or "document",
         file_bytes=file_bytes,
         mime_type=file.content_type or "application/octet-stream",
     )
 
-    # Enqueue background parse
-    parse_document_task.delay(str(pf.id), tenant_id)
+    # In testing mode, parse inline (no Voyage/Qdrant calls, instant completion)
+    from app.core.config import settings
+    if settings.is_testing:
+        from app.parsers.normalizer import parse_document as _parse_doc
+        from app.parsers.normalizer import ParseError as _ParseError
+        from app.models.clause import ParsedClause
+        file_bytes = await storage.download(pf.storage_key)
+        try:
+            parsed = _parse_doc(file_bytes, pf.original_filename, pf.mime_type)
+        except _ParseError as exc:
+            pf.parse_status = "failed"
+            await session.flush()
+            from app.core.exceptions import ValidationError
+            raise ValidationError(
+                f"Could not read '{pf.original_filename}'. "
+                "Make sure it is a valid, non-password-protected .docx or .pdf file. "
+                f"Detail: {exc}"
+            ) from exc
+        if not parsed["clauses"]:
+            pf.parse_status = "failed"
+            await session.flush()
+            from app.core.exceptions import ValidationError
+            raise ValidationError(
+                f"No text content could be extracted from '{pf.original_filename}'. "
+                "The file may be a scanned image PDF or an empty document. "
+                "Please upload a text-based document."
+            )
+        for clause_data in parsed["clauses"]:
+            pc = ParsedClause(
+                file_id=pf.id,
+                project_id=pf.project_id,
+                organization_id=pf.organization_id,
+                clause_number=clause_data.get("clause_number"),
+                heading=clause_data.get("heading"),
+                body_text=clause_data["body_text"],
+                paragraph_index=clause_data["paragraph_index"],
+                char_start=clause_data["char_start"],
+                char_end=clause_data["char_end"],
+                has_tracked_insertion=clause_data["has_tracked_insertion"],
+                has_tracked_deletion=clause_data["has_tracked_deletion"],
+                has_strikethrough=clause_data["has_strikethrough"],
+                has_comment=clause_data["has_comment"],
+                change_metadata=clause_data.get("change_metadata", {}),
+                embedding=None,
+            )
+            session.add(pc)
+        pf.parse_status = "completed"
+        await session.flush()
+    else:
+        parse_document_task.delay(str(pf.id), tenant_id)
 
     # Audit log
     from app.services.audit_service import AuditService
@@ -70,6 +131,54 @@ async def list_documents(
 ):
     svc = DocumentService(session, storage, uuid.UUID(tenant_id), uuid.UUID(user_id))
     return await svc.list_for_project(project_id)
+
+
+@router.delete("/{file_id}", status_code=204)
+async def delete_document(
+    project_id: uuid.UUID,
+    file_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    user_id: str = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+    storage: StorageClient = Depends(get_storage),
+):
+    from sqlalchemy import delete as sql_delete
+    from app.models.clause import ParsedClause
+    from app.services.audit_service import AuditService
+    from app.core.logging import get_logger
+    _logger = get_logger(__name__)
+
+    svc = DocumentService(session, storage, uuid.UUID(tenant_id), uuid.UUID(user_id))
+    pf = await svc.get_by_id(file_id)
+
+    storage_key = pf.storage_key
+    original_filename = pf.original_filename
+    file_role = pf.file_role
+
+    # Delete parsed clauses for this file first (FK)
+    await session.execute(sql_delete(ParsedClause).where(ParsedClause.file_id == file_id))
+    await session.delete(pf)
+    await session.flush()
+
+    # Audit the deletion
+    await AuditService(session).log(
+        tenant_id=uuid.UUID(tenant_id),
+        user_id=uuid.UUID(user_id),
+        action="document.delete",
+        resource_type="ProjectFile",
+        resource_id=file_id,
+        metadata={
+            "project_id": str(project_id),
+            "file_role": file_role if isinstance(file_role, str) else str(file_role),
+            "filename": original_filename,
+        },
+    )
+
+    # Remove from storage (best-effort)
+    try:
+        await storage.delete(storage_key)
+    except Exception:
+        _logger.warning("storage_delete_failed", key=storage_key)
 
 
 @router.get("/{file_id}/download-url")

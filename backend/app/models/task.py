@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,17 +18,14 @@ class AnalysisTask(Base, UUIDPrimaryKey, TimestampMixin):
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     triggered_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
 
-    task_type: Mapped[TaskType] = mapped_column(Enum(TaskType, native_enum=False), nullable=False)
-    status: Mapped[TaskStatus] = mapped_column(
-        Enum(TaskStatus, native_enum=False), nullable=False, default=TaskStatus.QUEUED
-    )
+    task_type: Mapped[TaskType] = mapped_column(String(64), nullable=False)
+    status: Mapped[TaskStatus] = mapped_column(String(32), nullable=False, default=TaskStatus.QUEUED)
 
     celery_task_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     model_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Input document IDs for audit trail (which file_ids were fed to this task)
     input_file_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     project: Mapped["Project"] = relationship(back_populates="analysis_tasks")

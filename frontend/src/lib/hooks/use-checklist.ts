@@ -22,6 +22,7 @@ export function useUpdateRule() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ChecklistRuleUpdate }) => checklistApi.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: checklistKeys.all }); toast.success("Rule updated") },
+    onError: () => { toast.error("Failed to update rule. Check your connection and try again.") },
   })
 }
 

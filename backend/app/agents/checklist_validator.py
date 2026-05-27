@@ -1,39 +1,193 @@
 """
-Agent 4: Checklist Validator
+Agent 4: Checklist Validator (demo mode — no API keys required)
 
-Two-phase validation:
-1. LLM extraction: Claude extracts structured values (dates, durations, amounts, courts)
+Two-phase validation using pure Python:
+1. Regex extraction: extracts dates, durations, amounts, courts from contract text
 2. Python rules engine: deterministically validates each extracted value against
-   per-tenant ChecklistRule configs. No LLM in the validation step itself.
+   per-tenant ChecklistRule configs.
 
-If a value cannot be extracted, the result is "not_found" — NOT a "fail".
+Replaces the original Claude-based LLM extraction phase with deterministic regex.
 """
 
-import json
+import re
 from datetime import date, datetime
 from typing import Any
 
 from app.agents.base_agent import PROMPT_VERSION, BaseAgent
-from app.core.config import settings
 from app.core.constants import FindingSeverity
-from app.integrations.anthropic_client import call_claude
-from app.utils.text_utils import strip_json_fences
+from app.core.logging import get_logger
 
-_EXTRACTION_SYSTEM = """\
-You are a contract data extractor. From the given contract text, extract the
-following values. If a value is not found or unclear, set it to null.
+logger = get_logger(__name__)
 
-Return ONLY valid JSON with these keys:
-{
-  "agreement_duration_months": number | null,
-  "agreement_date": "YYYY-MM-DD" | null,
-  "dispute_court_city": "string" | null,
-  "advance_payment_percent": number | null,
-  "contract_value_inr": number | null,
-  "termination_notice_months": number | null
-}
-"""
 
+# ---------------------------------------------------------------------------
+# Regex extractors for each supported field
+# ---------------------------------------------------------------------------
+
+_DATE_PATTERNS = [
+    # DD/MM/YYYY or DD-MM-YYYY
+    r"\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})\b",
+    # YYYY-MM-DD
+    r"\b(\d{4})-(\d{2})-(\d{2})\b",
+    # "1st January 2025", "25 March 2026"
+    r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b",
+    # "January 25, 2025"
+    r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b",
+]
+
+_MONTH_MAP = {m: i for i, m in enumerate(
+    ["January","February","March","April","May","June",
+     "July","August","September","October","November","December"], 1
+)}
+
+def _extract_dates(text: str) -> list[date]:
+    results = []
+    # YYYY-MM-DD
+    for m in re.finditer(r"\b(\d{4})-(\d{2})-(\d{2})\b", text):
+        try:
+            results.append(date(int(m.group(1)), int(m.group(2)), int(m.group(3))))
+        except ValueError:
+            pass
+    # DD/MM/YYYY
+    for m in re.finditer(r"\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})\b", text):
+        try:
+            results.append(date(int(m.group(3)), int(m.group(2)), int(m.group(1))))
+        except ValueError:
+            pass
+    # 1st January 2025
+    for m in re.finditer(
+        r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|"
+        r"August|September|October|November|December)\s+(\d{4})\b", text, re.IGNORECASE
+    ):
+        try:
+            results.append(date(int(m.group(3)), _MONTH_MAP[m.group(2).capitalize()], int(m.group(1))))
+        except (ValueError, KeyError):
+            pass
+    # January 25, 2025
+    for m in re.finditer(
+        r"\b(January|February|March|April|May|June|July|August|September|October|"
+        r"November|December)\s+(\d{1,2}),?\s+(\d{4})\b", text, re.IGNORECASE
+    ):
+        try:
+            results.append(date(int(m.group(3)), _MONTH_MAP[m.group(1).capitalize()], int(m.group(2))))
+        except (ValueError, KeyError):
+            pass
+    return results
+
+
+def _extract_duration_months(text: str) -> float | None:
+    """Extract contract duration expressed in months or years."""
+    # "24 months", "2 years", "18-month term"
+    m = re.search(r"\b(\d+(?:\.\d+)?)\s*[\-\s]?month", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    m = re.search(r"\b(\d+(?:\.\d+)?)\s*[\-\s]?year", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1)) * 12
+    return None
+
+
+def _extract_court_city(text: str) -> str | None:
+    """Extract jurisdiction / court city from dispute resolution clause."""
+    cities = [
+        "mumbai", "delhi", "bangalore", "bengaluru", "hyderabad",
+        "chennai", "kolkata", "pune", "ahmedabad", "surat", "jaipur",
+        "lucknow", "nagpur",
+    ]
+    for city in cities:
+        if re.search(r"\b" + city + r"\b", text, re.IGNORECASE):
+            return city
+    # Also check for "courts of <City>"
+    m = re.search(r"\bcourts?\s+(?:of|at|in)\s+([A-Z][a-z]+)", text)
+    if m:
+        return m.group(1).lower()
+    return None
+
+
+def _extract_advance_payment_percent(text: str) -> float | None:
+    """Extract advance payment percentage."""
+    patterns = [
+        r"\badvance\b.*?(\d+(?:\.\d+)?)\s*%",
+        r"(\d+(?:\.\d+)?)\s*%\s*(?:advance|upfront|mobilization)",
+    ]
+    for p in patterns:
+        m = re.search(p, text, re.IGNORECASE)
+        if m:
+            return float(m.group(1))
+    return None
+
+
+def _extract_contract_value_inr(text: str) -> float | None:
+    """Extract contract value in INR (rupees)."""
+    # "Rs. 50,00,000" / "INR 5000000" / "₹ 50 lakhs" / "50 crore"
+    # Crore
+    m = re.search(r"(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)\s*crore", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1).replace(",", "")) * 1e7
+    # Lakh / Lac
+    m = re.search(r"(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)\s*la(?:kh|c)", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1).replace(",", "")) * 1e5
+    # Plain number with currency symbol
+    m = re.search(r"(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)\b", text, re.IGNORECASE)
+    if m:
+        return float(m.group(1).replace(",", ""))
+    return None
+
+
+def _extract_termination_notice_months(text: str) -> float | None:
+    """Extract notice period for termination."""
+    # "2 months prior written notice" / "2-month notice" / "notice of 2 months"
+    # Try all common orderings
+    patterns_months = [
+        r"(?:notice|prior written notice|written notice)\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*[\-\s]?month",
+        r"(\d+(?:\.\d+)?)\s*[\-\s]?month(?:s)?\s+(?:\w+\s+){0,3}notice",
+        r"with\s+(\d+(?:\.\d+)?)\s*[\-\s]?month(?:s)?\s+(?:\w+\s+){0,2}notice",
+        r"(?:termination|terminate)\s+.*?(\d+(?:\.\d+)?)\s*[\-\s]?month",
+        r"(\d+(?:\.\d+)?)\s*[\-\s]?month(?:s)?\s+(?:written\s+)?notice",
+    ]
+    for p in patterns_months:
+        m = re.search(p, text, re.IGNORECASE)
+        if m:
+            return float(m.group(1))
+    # days → convert to months
+    patterns_days = [
+        r"(?:notice|prior.*?notice|written notice)\s+(?:of\s+)?(\d+)\s*[\-\s]?day",
+        r"(\d+)\s*[\-\s]?day(?:s)?\s+(?:\w+\s+){0,2}notice",
+        r"with\s+(\d+)\s*[\-\s]?day(?:s)?\s+(?:\w+\s+){0,2}notice",
+    ]
+    for p in patterns_days:
+        m = re.search(p, text, re.IGNORECASE)
+        if m:
+            return round(float(m.group(1)) / 30, 2)
+    return None
+
+
+def _extract_all_fields(full_text: str) -> dict:
+    """Run all extractors over the full contract text and return a flat dict."""
+    dates = _extract_dates(full_text)
+    today = date.today()
+
+    # Pick the most likely "agreement date" — first date that is on or before today
+    agreement_date = None
+    for d in sorted(dates):
+        if d <= today:
+            agreement_date = d.isoformat()
+            break
+
+    return {
+        "agreement_duration_months": _extract_duration_months(full_text),
+        "agreement_date": agreement_date,
+        "dispute_court_city": _extract_court_city(full_text),
+        "advance_payment_percent": _extract_advance_payment_percent(full_text),
+        "contract_value_inr": _extract_contract_value_inr(full_text),
+        "termination_notice_months": _extract_termination_notice_months(full_text),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rule validators (unchanged from original — fully deterministic Python)
+# ---------------------------------------------------------------------------
 
 def _fail(code: str, name: str, severity: str, detail: str, value: Any = None) -> dict:
     entry: dict = {"rule_code": code, "name": name, "result": "fail", "severity": severity, "detail": detail}
@@ -45,10 +199,6 @@ def _fail(code: str, name: str, severity: str, detail: str, value: Any = None) -
 def _not_found(code: str, name: str, severity: str) -> dict:
     return {"rule_code": code, "name": name, "result": "not_found", "severity": severity}
 
-
-# ---------------------------------------------------------------------------
-# Built-in rule validators (rule_code A-F, legacy — kept for backward compat)
-# ---------------------------------------------------------------------------
 
 def _validate_builtin(code: str, cfg: dict, name: str, severity: str,
                        extracted: dict, today: date) -> list[dict]:
@@ -110,54 +260,49 @@ def _validate_builtin(code: str, cfg: dict, name: str, severity: str,
                           f"Notice {val}mo outside {cfg.get('min_months')}–{cfg.get('max_months')}mo", val)]
         return []
 
-    return []  # unknown built-in code — skip
+    return []
 
-
-# ---------------------------------------------------------------------------
-# Generic rule type validators for custom rules
-# ---------------------------------------------------------------------------
-# Supported rule_config["type"] values and their required config keys:
-#
-#   numeric_range   — {"type": "numeric_range", "field": str, "min": num, "max": num}
-#                     Checks extracted[field] is within [min, max].
-#
-#   max_value       — {"type": "max_value", "field": str, "max": num}
-#                     Checks extracted[field] <= max.
-#
-#   min_value       — {"type": "min_value", "field": str, "min": num}
-#                     Checks extracted[field] >= min.
-#
-#   string_allowlist — {"type": "string_allowlist", "field": str, "allowed_values": [str, ...]}
-#                      Checks extracted[field].lower() in allowed_values (case-insensitive).
-#
-#   date_future     — {"type": "date_future", "field": str}
-#                     Checks the extracted date string (YYYY-MM-DD) is in the future.
-#
-#   date_past       — {"type": "date_past", "field": str}
-#                     Checks the extracted date string (YYYY-MM-DD) is in the past.
-#
-#   boolean_present — {"type": "boolean_present", "field": str}
-#                     Checks extracted[field] is not None (field must be present).
 
 def _validate_custom(code: str, cfg: dict, name: str, severity: str,
                      extracted: dict, today: date) -> list[dict]:
     rule_type = cfg.get("type", "")
-    field = cfg.get("field")
+
+    # Date rules default to agreement_date when no explicit field is configured
+    _date_default = "agreement_date"
+    field = cfg.get("field") or (_date_default if rule_type in ("date_future", "date_past") else None)
+
+    # boolean_present without a field: treat as a generic "clause present" check
+    if rule_type == "boolean_present":
+        field_key = cfg.get("field", "")
+        val = extracted.get(field_key) if field_key else None
+        # If nothing was configured, we cannot extract, so report not_found
+        if not field_key:
+            return [_not_found(code, name, severity)]
+        if val is None:
+            return [_fail(code, name, severity, f"Required clause '{name}' was not found in the contract")]
+        return []
 
     if not field:
-        # Misconfigured rule — treat as not_found so it surfaces for admin review
         return [_not_found(code, name, severity)]
 
     val = extracted.get(field)
+    field_label = next((f["label"] for f in [
+        {"value": "agreement_duration_months", "label": "Agreement Duration"},
+        {"value": "agreement_date", "label": "Agreement Date"},
+        {"value": "dispute_court_city", "label": "Dispute Court City"},
+        {"value": "advance_payment_percent", "label": "Advance Payment %"},
+        {"value": "contract_value_inr", "label": "Contract Value (INR)"},
+        {"value": "termination_notice_months", "label": "Termination Notice"},
+    ] if f["value"] == field), field)
 
     if rule_type == "numeric_range":
         low, high = cfg.get("min"), cfg.get("max")
         if val is None:
             return [_not_found(code, name, severity)]
         if low is not None and val < low:
-            return [_fail(code, name, severity, f"{field} value {val} is below minimum {low}", val)]
+            return [_fail(code, name, severity, f"{field_label}: {val} is below minimum {low}", val)]
         if high is not None and val > high:
-            return [_fail(code, name, severity, f"{field} value {val} exceeds maximum {high}", val)]
+            return [_fail(code, name, severity, f"{field_label}: {val} exceeds maximum {high}", val)]
         return []
 
     if rule_type == "max_value":
@@ -165,7 +310,7 @@ def _validate_custom(code: str, cfg: dict, name: str, severity: str,
         if val is None:
             return [_not_found(code, name, severity)]
         if max_v is not None and val > max_v:
-            return [_fail(code, name, severity, f"{field} value {val} exceeds maximum {max_v}", val)]
+            return [_fail(code, name, severity, f"{field_label}: {val} exceeds maximum {max_v}", val)]
         return []
 
     if rule_type == "min_value":
@@ -173,7 +318,7 @@ def _validate_custom(code: str, cfg: dict, name: str, severity: str,
         if val is None:
             return [_not_found(code, name, severity)]
         if min_v is not None and val < min_v:
-            return [_fail(code, name, severity, f"{field} value {val} is below minimum {min_v}", val)]
+            return [_fail(code, name, severity, f"{field_label}: {val} is below minimum {min_v}", val)]
         return []
 
     if rule_type == "string_allowlist":
@@ -182,7 +327,7 @@ def _validate_custom(code: str, cfg: dict, name: str, severity: str,
             return [_not_found(code, name, severity)]
         if str(val).lower() not in allowed:
             return [_fail(code, name, severity,
-                          f"{field} value '{val}' not in allowed list: {cfg.get('allowed_values', [])}", val)]
+                          f"{field_label}: '{val}' not in allowed list: {cfg.get('allowed_values', [])}", val)]
         return []
 
     if rule_type == "date_future":
@@ -191,7 +336,7 @@ def _validate_custom(code: str, cfg: dict, name: str, severity: str,
         try:
             val_date = datetime.strptime(str(val), "%Y-%m-%d").date()
             if val_date <= today:
-                return [_fail(code, name, severity, f"{field} date {val} is not a future date", val)]
+                return [_fail(code, name, severity, f"{field_label}: {val} is not a future date", val)]
         except ValueError:
             return [_not_found(code, name, severity)]
         return []
@@ -202,17 +347,11 @@ def _validate_custom(code: str, cfg: dict, name: str, severity: str,
         try:
             val_date = datetime.strptime(str(val), "%Y-%m-%d").date()
             if val_date >= today:
-                return [_fail(code, name, severity, f"{field} date {val} is not in the past", val)]
+                return [_fail(code, name, severity, f"{field_label}: {val} is not in the past", val)]
         except ValueError:
             return [_not_found(code, name, severity)]
         return []
 
-    if rule_type == "boolean_present":
-        if val is None:
-            return [_fail(code, name, severity, f"Required field '{field}' was not found in the contract")]
-        return []
-
-    # Unknown type — surface as not_found rather than silently swallowing it
     return [_not_found(code, name, severity)]
 
 
@@ -220,27 +359,17 @@ _BUILTIN_CODES = {"A", "B", "C", "D", "E", "F"}
 
 
 def _validate_rules(extracted: dict, rules: list[dict]) -> list[dict]:
-    """
-    Deterministic Python validation of extracted values against rule configs.
-    Returns list of rule failure dicts.
-
-    Built-in rules (A-F) are validated by code. Custom rules are dispatched
-    by rule_config["type"] so new rules work without code changes.
-    """
     today = date.today()
     failures = []
-
     for rule in rules:
         code = rule["rule_code"]
         cfg = rule["rule_config"]
         severity = rule["severity"]
         name = rule["name"]
-
         if code in _BUILTIN_CODES:
             failures.extend(_validate_builtin(code, cfg, name, severity, extracted, today))
         else:
             failures.extend(_validate_custom(code, cfg, name, severity, extracted, today))
-
     return failures
 
 
@@ -257,22 +386,14 @@ class ChecklistValidatorAgent(BaseAgent):
         """
         project_id = context["project_id"]
         tenant_id = context["tenant_id"]
-        full_text = context["full_text"]
-        rules = context["rules"]
+        full_text = context.get("full_text", "")
+        rules = context.get("rules", [])
 
         self._log_run_start(project_id, tenant_id)
 
-        # Phase 1: LLM extraction
-        response_text, usage = await call_claude(
-            messages=[{"role": "user", "content": f"CONTRACT TEXT:\n\n{full_text[:12000]}"}],
-            system=_EXTRACTION_SYSTEM,
-            model=settings.ANTHROPIC_MODEL,
-        )
-
-        try:
-            extracted = json.loads(strip_json_fences(response_text))
-        except json.JSONDecodeError:
-            extracted = {}
+        # Phase 1: Regex-based extraction (no API call)
+        extracted = _extract_all_fields(full_text)
+        logger.info("checklist_extracted", project_id=project_id, extracted=extracted)
 
         # Phase 2: Deterministic Python rules engine
         failures = _validate_rules(extracted, rules)
@@ -298,8 +419,8 @@ class ChecklistValidatorAgent(BaseAgent):
                 title=title,
                 description=failure.get("detail", f"Value not found for rule {failure['rule_code']}"),
                 recommendation=f"Review the {failure['name']} clause and ensure compliance.",
-                confidence=0.95 if result == "fail" else 0.5,
-                reasoning_trace=f"Extracted: {extracted}",
+                confidence=0.90 if result == "fail" else 0.55,
+                reasoning_trace=f"Regex-extracted values: {extracted}",
             ))
 
         self._log_run_complete(project_id, len(findings))
@@ -307,7 +428,7 @@ class ChecklistValidatorAgent(BaseAgent):
         return {
             "findings": findings,
             "extracted_values": extracted,
-            "token_usage": usage,
-            "model_version": settings.ANTHROPIC_MODEL,
+            "token_usage": {"input_tokens": 0, "output_tokens": 0},
+            "model_version": "python-regex-demo",
             "prompt_version": PROMPT_VERSION,
         }

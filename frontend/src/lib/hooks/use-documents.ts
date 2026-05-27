@@ -37,8 +37,23 @@ export function useUploadDocument(projectId: string) {
       qc.invalidateQueries({ queryKey: docKeys.list(projectId) })
       toast.success("Document uploaded")
     },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      toast.error("Upload failed", { description: msg ?? "Check the file type and try again." })
+    },
+  })
+}
+
+export function useDeleteDocument(projectId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (fileId: string) => documentsApi.delete(projectId, fileId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: docKeys.list(projectId) })
+      toast.success("Document removed")
+    },
     onError: () => {
-      toast.error("Upload failed", { description: "Check the file type and try again." })
+      toast.error("Failed to remove document")
     },
   })
 }

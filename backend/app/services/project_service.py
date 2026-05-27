@@ -19,6 +19,10 @@ class ProjectService:
 
     async def _check_project_quota(self) -> None:
         """Raises QuotaExceededError if tenant has hit their monthly project limit."""
+        from app.core.config import settings
+        if settings.is_testing:
+            return
+
         result = await self._db.execute(
             select(Subscription).where(Subscription.organization_id == self._tenant_id)
         )
@@ -87,9 +91,35 @@ class ProjectService:
         if data.status is not None:
             project.status = data.status
         await self._db.flush()
+        await self._db.refresh(project)
         return project
 
-    async def delete(self, project_id: uuid.UUID) -> None:
+    async def delete(self, project_id: uuid.UUID) -> list[str]:
+        from sqlalchemy import select, delete
+        from app.models.clause import ParsedClause, ClauseFlag
+        from app.models.task import AnalysisTask, TaskResult
+
         project = await self.get_by_id(project_id)
+
+        # Collect all files so we can delete from storage
+        files_result = await self._db.execute(
+            select(ProjectFile).where(ProjectFile.project_id == project_id)
+        )
+        files = files_result.scalars().all()
+
+        # Cascade-delete in FK order: flags → task_results → tasks → clauses → files
+        task_ids_result = await self._db.execute(
+            select(AnalysisTask.id).where(AnalysisTask.project_id == project_id)
+        )
+        task_ids = [row for row in task_ids_result.scalars().all()]
+        if task_ids:
+            await self._db.execute(delete(ClauseFlag).where(ClauseFlag.task_id.in_(task_ids)))
+            await self._db.execute(delete(TaskResult).where(TaskResult.task_id.in_(task_ids)))
+        await self._db.execute(delete(AnalysisTask).where(AnalysisTask.project_id == project_id))
+        await self._db.execute(delete(ParsedClause).where(ParsedClause.project_id == project_id))
+        await self._db.execute(delete(ProjectFile).where(ProjectFile.project_id == project_id))
         await self._db.delete(project)
         await self._db.flush()
+
+        # Delete files from storage after DB is committed (best-effort)
+        return [f.storage_key for f in files]

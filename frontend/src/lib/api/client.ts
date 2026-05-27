@@ -1,6 +1,10 @@
 import axios from "axios"
 import { toast } from "sonner"
 
+const IS_TESTING = process.env.NEXT_PUBLIC_APP_ENV === "testing"
+const DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+const DEV_USER_ID = "00000000-0000-0000-0000-000000000002"
+
 type TokenGetter = () => Promise<string | null>
 
 let _getToken: TokenGetter | null = null
@@ -15,6 +19,11 @@ export const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use(async (config) => {
+  if (IS_TESTING) {
+    config.headers["X-Test-Tenant-Id"] = DEV_TENANT_ID
+    config.headers["X-Test-User-Id"] = DEV_USER_ID
+    return config
+  }
   if (_getToken) {
     try {
       const token = await _getToken()

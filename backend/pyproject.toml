@@ -59,6 +59,9 @@ dependencies = [
     # PDF export
     "reportlab>=4.2.0",
 
+    # Email validation (required for pydantic EmailStr)
+    "email-validator>=2.1.0",
+
     # Utilities
     "structlog>=24.1.0",
     "python-slugify>=8.0.4",

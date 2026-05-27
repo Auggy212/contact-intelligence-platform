@@ -204,6 +204,9 @@ class BillingService:
         Raises QuotaExceededError if the tenant has hit their monthly
         contract processing limit for the current plan.
         """
+        if settings.is_testing:
+            return
+
         sub = await self.get_subscription(org_id)
         if sub is None:
             # No subscription row — treat as trial

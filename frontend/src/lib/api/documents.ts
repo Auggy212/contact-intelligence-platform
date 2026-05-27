@@ -26,4 +26,7 @@ export const documentsApi = {
 
   getDownloadUrl: (projectId: string, fileId: string): Promise<{ download_url: string }> =>
     apiClient.get(`/projects/${projectId}/documents/${fileId}/download-url`).then((r) => r.data),
+
+  delete: (projectId: string, fileId: string): Promise<void> =>
+    apiClient.delete(`/projects/${projectId}/documents/${fileId}`).then(() => undefined),
 }

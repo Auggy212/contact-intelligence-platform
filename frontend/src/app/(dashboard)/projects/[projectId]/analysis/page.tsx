@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { TASK_TYPE_LABELS } from "@/lib/types/api"
 import type { AnalysisTask, TaskType } from "@/lib/types/api"
 import {
-  Loader2, CheckCircle2, XCircle, Clock, Play, Flag, AlertTriangle,
+  Loader2, CheckCircle2, XCircle, Clock, Play, Flag, AlertTriangle, RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -83,7 +83,12 @@ export default function AnalysisPage() {
     (r) => documents?.some((d) => d.file_role === r && d.parse_status === "completed")
   )
 
+  const isRunning = tasks.some((t) => t.status === "queued" || t.status === "running")
+  const allDone = tasks.length > 0 && tasks.every((t) => t.status === "completed" || t.status === "failed")
+  const hasRun = tasks.length > 0
+
   function toggleTask(t: TaskType) {
+    if (isRunning) return
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(t)) { next.delete(t) } else { next.add(t) }
@@ -96,14 +101,17 @@ export default function AnalysisPage() {
     setTasks(result)
   }
 
-  const allDone = tasks.length > 0 && tasks.every((t) => t.status === "completed" || t.status === "failed")
+  function handleRerun() {
+    // Reset so the user can adjust selection and run again
+    setTasks([])
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
       {!hasAllDocs && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>All three documents must be uploaded and parsed before running analysis.</span>
+          <span>All three documents (Template A, Proposed Draft B, Vendor Reply C) must be uploaded and parsed before running analysis.</span>
         </div>
       )}
 
@@ -120,7 +128,7 @@ export default function AnalysisPage() {
                   id={taskType}
                   checked={selected.has(taskType)}
                   onCheckedChange={() => toggleTask(taskType)}
-                  disabled={!hasAllDocs || isPending || tasks.length > 0}
+                  disabled={!hasAllDocs || isRunning}
                 />
                 <div>
                   <Label htmlFor={taskType} className="text-sm font-medium cursor-pointer">{info.label}</Label>
@@ -129,17 +137,47 @@ export default function AnalysisPage() {
               </div>
             )
           })}
-          <Button
-            onClick={handleRun}
-            disabled={!hasAllDocs || isPending || tasks.length > 0 || selected.size === 0}
-            className="w-full mt-2"
-          >
-            {isPending ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</>
-            ) : (
-              <><Play className="w-4 h-4 mr-2" />Run {selected.size} Task{selected.size !== 1 ? "s" : ""}</>
-            )}
-          </Button>
+
+          {!hasRun ? (
+            <Button
+              onClick={handleRun}
+              disabled={!hasAllDocs || isPending || isRunning || selected.size === 0}
+              className="w-full mt-2"
+            >
+              {isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting…</>
+              ) : (
+                <><Play className="w-4 h-4 mr-2" />Run {selected.size} Task{selected.size !== 1 ? "s" : ""}</>
+              )}
+            </Button>
+          ) : (
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="outline"
+                onClick={handleRerun}
+                disabled={isRunning}
+                className="flex-1"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Re-run Analysis
+              </Button>
+              {allDone && (
+                <Button
+                  onClick={() => router.push(`/projects/${projectId}/findings`)}
+                  className="flex-1"
+                >
+                  <Flag className="w-4 h-4 mr-2" />
+                  View Findings
+                </Button>
+              )}
+            </div>
+          )}
+
+          {allDone && (
+            <p className="text-xs text-slate-400 text-center">
+              Re-running will replace all previous findings for the selected tasks.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -150,15 +188,6 @@ export default function AnalysisPage() {
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
             {tasks.map((task) => <TaskStatusCard key={task.id} task={task} />)}
-            {allDone && (
-              <Button
-                onClick={() => router.push(`/projects/${projectId}/findings`)}
-                className="w-full mt-2"
-              >
-                <Flag className="w-4 h-4 mr-2" />
-                View Findings
-              </Button>
-            )}
           </CardContent>
         </Card>
       )}

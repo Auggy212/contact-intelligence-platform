@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     audit,
     billing,
     checklist,
+    debug,
     documents,
     export,
     health,
@@ -18,6 +19,7 @@ from app.api.v1.endpoints import (
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(health.router)
+api_router.include_router(debug.router)
 api_router.include_router(organizations.router)
 api_router.include_router(users.router)
 api_router.include_router(projects.router)

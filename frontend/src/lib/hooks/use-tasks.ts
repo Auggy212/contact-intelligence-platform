@@ -22,10 +22,17 @@ export function useTaskPolling(taskId: string, enabled: boolean) {
 }
 
 export function useTriggerTasks(projectId: string) {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: TaskTriggerRequest) => tasksApi.trigger(projectId, data),
     onSuccess: () => {
+      // Invalidate findings cache so the findings page always shows fresh results
+      qc.invalidateQueries({ queryKey: taskKeys.findings(projectId) })
       toast.success("Analysis started", { description: "Results will appear as tasks complete." })
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      toast.error("Failed to start analysis", { description: msg ?? "Check that all documents are uploaded." })
     },
   })
 }

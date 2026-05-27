@@ -26,6 +26,7 @@ class ChecklistService:
         )
         self._db.add(rule)
         await self._db.flush()
+        await self._db.refresh(rule)
         return rule
 
     async def list_enabled(self) -> list[ChecklistRule]:
@@ -70,6 +71,7 @@ class ChecklistService:
         if data.is_enabled is not None:
             rule.is_enabled = data.is_enabled
         await self._db.flush()
+        await self._db.refresh(rule)
         return rule
 
     async def delete(self, rule_id: uuid.UUID) -> None:

@@ -13,8 +13,12 @@ from app.core.exceptions import (
     AppError,
     AuthenticationError,
     AuthorizationError,
+    ConflictError,
     NotFoundError,
+    ParseError,
     QuotaExceededError,
+    StorageError,
+    ValidationError,
 )
 from app.core.logging import configure_logging, get_logger
 from app.core.redis import close_redis
@@ -79,9 +83,29 @@ async def not_found_error_handler(request: Request, exc: NotFoundError):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
+@app.exception_handler(ConflictError)
+async def conflict_error_handler(request: Request, exc: ConflictError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.exception_handler(QuotaExceededError)
 async def quota_error_handler(request: Request, exc: QuotaExceededError):
     return JSONResponse(status_code=402, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(request: Request, exc: ValidationError):
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(ParseError)
+async def parse_error_handler(request: Request, exc: ParseError):
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(StorageError)
+async def storage_error_handler(request: Request, exc: StorageError):
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
 @app.exception_handler(AppError)

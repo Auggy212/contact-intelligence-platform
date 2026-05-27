@@ -1,9 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
-import { useParams, usePathname } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 import { useProject } from "@/lib/hooks/use-projects"
-import { ChevronRight, FolderOpen, Upload, BarChart2, Flag, Download } from "lucide-react"
+import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
+import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog"
+import { Button } from "@/components/ui/button"
+import { ChevronRight, FolderOpen, Upload, BarChart2, Flag, Download, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -18,7 +22,10 @@ const tabs = [
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   const { projectId } = useParams<{ projectId: string }>()
   const pathname = usePathname()
+  const router = useRouter()
   const { data: project, isLoading } = useProject(projectId)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const base = `/projects/${projectId}`
 
@@ -35,9 +42,31 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
         )}
       </div>
 
-      {/* Project name */}
+      {/* Project name + actions */}
       {!isLoading && project && (
-        <h1 className="text-xl font-bold text-slate-900 mb-5">{project.name}</h1>
+        <div className="flex items-center justify-between mb-5 gap-3">
+          <h1 className="text-xl font-bold text-slate-900 truncate">{project.name}</h1>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+              className="gap-1.5"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+              className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Tab nav */}
@@ -66,6 +95,19 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       </div>
 
       {children}
+
+      <EditProjectDialog
+        project={project ?? null}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+
+      <DeleteProjectDialog
+        project={project ?? null}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => router.push("/projects")}
+      />
     </div>
   )
 }

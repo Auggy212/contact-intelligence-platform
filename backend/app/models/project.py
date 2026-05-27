@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,9 +22,7 @@ class Project(Base, UUIDPrimaryKey, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[ProjectStatus] = mapped_column(
-        Enum(ProjectStatus, native_enum=False), nullable=False, default=ProjectStatus.DRAFT
-    )
+    status: Mapped[ProjectStatus] = mapped_column(String(32), nullable=False, default=ProjectStatus.DRAFT)
 
     organization: Mapped["Organization"] = relationship(back_populates="projects")
     workspace: Mapped["Workspace | None"] = relationship(back_populates="projects")
@@ -41,7 +39,7 @@ class ProjectFile(Base, UUIDPrimaryKey, TimestampMixin):
     organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
 
-    file_role: Mapped[FileRole] = mapped_column(Enum(FileRole, native_enum=False), nullable=False)
+    file_role: Mapped[FileRole] = mapped_column(String(4), nullable=False)
     original_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     storage_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)

@@ -57,52 +57,75 @@ async def _parse_document_async(file_id: str, tenant_id: str) -> dict:
         await session.flush()
 
         try:
+            from app.core.config import settings
             file_bytes = await storage.download(pf.storage_key)
             parsed = parse_document(file_bytes, pf.original_filename, pf.mime_type)
 
             clauses = parsed["clauses"]
-            texts = [c["body_text"] for c in clauses]
-            embeddings = await embed_texts(texts) if texts else []
 
-            qdrant_points = []
-            for idx, (clause_data, embedding) in enumerate(zip(clauses, embeddings)):
-                pc = ParsedClause(
-                    file_id=pf.id,
-                    project_id=pf.project_id,
-                    organization_id=pf.organization_id,
-                    clause_number=clause_data.get("clause_number"),
-                    heading=clause_data.get("heading"),
-                    body_text=clause_data["body_text"],
-                    paragraph_index=clause_data["paragraph_index"],
-                    char_start=clause_data["char_start"],
-                    char_end=clause_data["char_end"],
-                    has_tracked_insertion=clause_data["has_tracked_insertion"],
-                    has_tracked_deletion=clause_data["has_tracked_deletion"],
-                    has_strikethrough=clause_data["has_strikethrough"],
-                    has_comment=clause_data["has_comment"],
-                    change_metadata=clause_data.get("change_metadata", {}),
-                    embedding=embedding,
-                )
-                session.add(pc)
-                await session.flush()  # flush to get pc.id before building Qdrant payload
+            # Skip embeddings + Qdrant when running in testing mode (no real API keys)
+            if settings.is_testing:
+                for clause_data in clauses:
+                    pc = ParsedClause(
+                        file_id=pf.id,
+                        project_id=pf.project_id,
+                        organization_id=pf.organization_id,
+                        clause_number=clause_data.get("clause_number"),
+                        heading=clause_data.get("heading"),
+                        body_text=clause_data["body_text"],
+                        paragraph_index=clause_data["paragraph_index"],
+                        char_start=clause_data["char_start"],
+                        char_end=clause_data["char_end"],
+                        has_tracked_insertion=clause_data["has_tracked_insertion"],
+                        has_tracked_deletion=clause_data["has_tracked_deletion"],
+                        has_strikethrough=clause_data["has_strikethrough"],
+                        has_comment=clause_data["has_comment"],
+                        change_metadata=clause_data.get("change_metadata", {}),
+                        embedding=None,
+                    )
+                    session.add(pc)
+            else:
+                texts = [c["body_text"] for c in clauses]
+                embeddings = await embed_texts(texts) if texts else []
 
-                qdrant_points.append({
-                    "id": str(pc.id),
-                    "vector": embedding,
-                    "payload": {
-                        "file_id": str(pf.id),
-                        "project_id": str(pf.project_id),
-                        "organization_id": str(pf.organization_id),
-                        "clause_number": clause_data.get("clause_number"),
-                        "heading": clause_data.get("heading"),
-                        "paragraph_index": clause_data["paragraph_index"],
-                    },
-                })
+                qdrant_points = []
+                for clause_data, embedding in zip(clauses, embeddings):
+                    pc = ParsedClause(
+                        file_id=pf.id,
+                        project_id=pf.project_id,
+                        organization_id=pf.organization_id,
+                        clause_number=clause_data.get("clause_number"),
+                        heading=clause_data.get("heading"),
+                        body_text=clause_data["body_text"],
+                        paragraph_index=clause_data["paragraph_index"],
+                        char_start=clause_data["char_start"],
+                        char_end=clause_data["char_end"],
+                        has_tracked_insertion=clause_data["has_tracked_insertion"],
+                        has_tracked_deletion=clause_data["has_tracked_deletion"],
+                        has_strikethrough=clause_data["has_strikethrough"],
+                        has_comment=clause_data["has_comment"],
+                        change_metadata=clause_data.get("change_metadata", {}),
+                        embedding=embedding,
+                    )
+                    session.add(pc)
+                    await session.flush()
 
-            # Upsert all vectors into tenant's Qdrant collection
-            if qdrant_points:
-                await ensure_collection(collection_name)
-                await upsert_vectors(collection_name, qdrant_points)
+                    qdrant_points.append({
+                        "id": str(pc.id),
+                        "vector": embedding,
+                        "payload": {
+                            "file_id": str(pf.id),
+                            "project_id": str(pf.project_id),
+                            "organization_id": str(pf.organization_id),
+                            "clause_number": clause_data.get("clause_number"),
+                            "heading": clause_data.get("heading"),
+                            "paragraph_index": clause_data["paragraph_index"],
+                        },
+                    })
+
+                if qdrant_points:
+                    await ensure_collection(collection_name)
+                    await upsert_vectors(collection_name, qdrant_points)
 
             pf.parse_status = "completed"
             await session.flush()

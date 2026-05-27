@@ -3,9 +3,13 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_session, get_tenant_id, get_user_id
+from app.api.deps import get_session, get_storage, get_tenant_id, get_user_id
+from app.integrations.storage_client import StorageClient
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 from app.services.project_service import ProjectService
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -52,8 +56,21 @@ async def update_project(
     user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
+    from app.services.audit_service import AuditService
+
     svc = ProjectService(session, uuid.UUID(tenant_id), uuid.UUID(user_id))
-    return await svc.update(project_id, data)
+    project = await svc.update(project_id, data)
+
+    await AuditService(session).log(
+        tenant_id=uuid.UUID(tenant_id),
+        user_id=uuid.UUID(user_id),
+        action="project.update",
+        resource_type="Project",
+        resource_id=project_id,
+        metadata={k: v for k, v in data.model_dump().items() if v is not None},
+    )
+
+    return project
 
 
 @router.delete("/{project_id}", status_code=204)
@@ -62,6 +79,34 @@ async def delete_project(
     tenant_id: str = Depends(get_tenant_id),
     user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
+    storage: StorageClient = Depends(get_storage),
 ):
+    from app.services.audit_service import AuditService
+
     svc = ProjectService(session, uuid.UUID(tenant_id), uuid.UUID(user_id))
-    await svc.delete(project_id)
+
+    # Capture project name before deletion for audit metadata
+    project = await svc.get_by_id(project_id)
+    project_name = project.name
+
+    storage_keys = await svc.delete(project_id)
+
+    # Write audit entry AFTER the cascade delete but still within the same transaction
+    await AuditService(session).log(
+        tenant_id=uuid.UUID(tenant_id),
+        user_id=uuid.UUID(user_id),
+        action="project.delete",
+        resource_type="Project",
+        resource_id=project_id,
+        metadata={
+            "project_name": project_name,
+            "files_deleted": len(storage_keys),
+        },
+    )
+
+    # Delete files from MinIO/S3 — best-effort, after DB work is flushed
+    for key in storage_keys:
+        try:
+            await storage.delete(key)
+        except Exception:
+            logger.warning("storage_delete_failed", key=key)

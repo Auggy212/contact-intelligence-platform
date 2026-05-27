@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,7 +33,7 @@ class Membership(Base, UUIDPrimaryKey, TimestampMixin):
     organization_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True
     )
-    role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), nullable=False, default=Role.VIEWER)
+    role: Mapped[Role] = mapped_column(String(32), nullable=False, default=Role.VIEWER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="memberships")

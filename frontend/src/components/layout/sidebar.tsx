@@ -29,7 +29,7 @@ export function Sidebar() {
           <FileText className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">Contract Intel</p>
+          <p className="text-sm font-semibold text-white truncate">ContractIQ</p>
           <p className="text-xs text-slate-400 truncate">AI Legal Review</p>
         </div>
       </div>
