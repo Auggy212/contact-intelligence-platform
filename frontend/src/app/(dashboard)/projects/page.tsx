@@ -11,6 +11,7 @@ import { CreateProjectDialog } from "@/components/projects/create-project-dialog
 import { Skeleton } from "@/components/ui/skeleton"
 import { useProjects } from "@/lib/hooks/use-projects"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useStaggerReveal } from "@/hooks/use-scroll-reveal"
 import type { ProjectStatus } from "@/lib/types/api"
 
 export default function ProjectsPage() {
@@ -18,6 +19,8 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all")
   const { data: projects, isLoading } = useProjects()
+  
+  const revealRef = useStaggerReveal(50)
 
   const filtered = (projects ?? []).filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
@@ -27,29 +30,31 @@ export default function ProjectsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Projects"
-        description="AI-powered contract review projects for your organisation"
-        action={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
-        }
-      />
+      <div className="animate-fade-up">
+        <PageHeader
+          title="Projects"
+          description="AI-powered contract review projects for your organisation"
+          action={
+            <Button onClick={() => setCreateOpen(true)} className="animate-glow-pulse">
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          }
+        />
+      </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 animate-fade-in delay-75">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Search projects…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 transition-all focus:ring-2 focus:ring-orange-500/10"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProjectStatus | "all")}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-36 transition-all focus:ring-2 focus:ring-orange-500/10">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -69,16 +74,20 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={FolderOpen}
-          title={search || statusFilter !== "all" ? "No projects match your filters" : "No projects yet"}
-          description={search || statusFilter !== "all" ? "Try adjusting your search or filters" : "Create your first contract review project to get started"}
-          action={(!search && statusFilter === "all") ? { label: "New Project", onClick: () => setCreateOpen(true) } : undefined}
-        />
+        <div className="animate-fade-in delay-100">
+          <EmptyState
+            icon={FolderOpen}
+            title={search || statusFilter !== "all" ? "No projects match your filters" : "No projects yet"}
+            description={search || statusFilter !== "all" ? "Try adjusting your search or filters" : "Create your first contract review project to get started"}
+            action={(!search && statusFilter === "all") ? { label: "New Project", onClick: () => setCreateOpen(true) } : undefined}
+          />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div ref={revealRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <div key={project.id} className="reveal">
+              <ProjectCard project={project} />
+            </div>
           ))}
         </div>
       )}

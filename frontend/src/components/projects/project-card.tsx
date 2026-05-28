@@ -1,41 +1,44 @@
 "use client"
 
 import Link from "next/link"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ProjectStatusBadge } from "./project-status-badge"
 import { formatRelative } from "@/lib/utils"
 import type { Project } from "@/lib/types/api"
-import { FolderOpen, ArrowRight } from "lucide-react"
+import { ArrowRight, FolderOpen } from "lucide-react"
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link href={`/projects/${project.id}`}>
-      <Card className="hover:shadow-md hover:border-blue-200 transition-all cursor-pointer h-full group">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <FolderOpen className="w-4 h-4 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-slate-900 text-sm leading-tight line-clamp-2">
-                {project.name}
-              </h3>
+      <div className="group relative flex h-full flex-col rounded-xl border border-white/[0.07] bg-[#111111] p-5 transition-all hover:border-orange-500/30 hover:bg-[#14151A] hover:shadow-lg hover:shadow-orange-500/5 cursor-pointer">
+        {/* Orange hover glow line */}
+        <div className="absolute inset-x-0 top-0 h-px rounded-t-xl bg-gradient-to-r from-transparent via-orange-500/0 to-transparent transition-all group-hover:via-orange-500/40" />
+
+        {/* Header */}
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 ring-1 ring-orange-500/15 group-hover:bg-orange-500/20 transition-all">
+              <FolderOpen className="h-4 w-4 text-orange-400" />
             </div>
-            <ProjectStatusBadge status={project.status} />
+            <h3 className="truncate text-sm font-bold text-white leading-snug line-clamp-2">
+              {project.name}
+            </h3>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {project.description && (
-            <p className="text-xs text-slate-500 line-clamp-2 mb-3">
-              {project.description}
-            </p>
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{formatRelative(project.created_at)}</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" />
-          </div>
-        </CardContent>
-      </Card>
+          <ProjectStatusBadge status={project.status} />
+        </div>
+
+        {/* Description */}
+        {project.description && (
+          <p className="mb-4 flex-1 text-xs leading-relaxed text-zinc-600 line-clamp-2">
+            {project.description}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-white/[0.05] pt-3">
+          <span className="text-xs text-zinc-600">{formatRelative(project.created_at)}</span>
+          <ArrowRight className="h-3.5 w-3.5 text-zinc-700 transition-all group-hover:text-orange-400 group-hover:translate-x-0.5" />
+        </div>
+      </div>
     </Link>
   )
 }

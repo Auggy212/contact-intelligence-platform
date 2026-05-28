@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation"
+import type { Metadata } from "next"
+import { AuthScreen } from "@/components/auth/auth-screen"
 
-// DEV BYPASS MODE — skip signup, go straight to dashboard
+export const metadata: Metadata = {
+  title: "Create account | Contract Intelligence Platform",
+  description: "Create your Contract Intelligence workspace.",
+}
+
 export default function SignUpPage() {
-  redirect("/projects")
+  return <AuthScreen mode="sign-up" />
 }

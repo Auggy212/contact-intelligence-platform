@@ -18,7 +18,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SeverityBadge } from "@/components/findings/severity-badge"
-import { CheckSquare, Plus, Pencil, Trash2 } from "lucide-react"
+import { CheckSquare, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
+import { useStaggerReveal } from "@/hooks/use-scroll-reveal"
+import { cn } from "@/lib/utils"
 import type { ChecklistRule, Severity } from "@/lib/types/api"
 
 const RULE_TYPES = ["numeric_range", "max_value", "min_value", "string_allowlist", "date_future", "date_past", "boolean_present"] as const
@@ -58,8 +60,8 @@ function RuleFormDialog({
   editing?: ChecklistRule | null
 }) {
   const { mutateAsync: create, isPending: creating } = useCreateRule()
-  const { mutateAsync: update, isPending: updating } = useUpdateRule()
-  const isLoading = creating || updating
+  const { mutateAsync: updateRule, isPending: updatingRule } = useUpdateRule()
+  const isLoading = creating || updatingRule
 
   const existingType = editing?.rule_config?.type as RuleType | undefined
   const { register, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<FormValues>({
@@ -80,7 +82,7 @@ function RuleFormDialog({
   async function onSubmit(v: FormValues) {
     const config = buildConfig(v)
     if (editing) {
-      await update({ id: editing.id, data: { name: v.name, description: v.description, severity: v.severity as Severity, rule_config: config, is_enabled: v.is_enabled } })
+      await updateRule({ id: editing.id, data: { name: v.name, description: v.description, severity: v.severity as Severity, rule_config: config, is_enabled: v.is_enabled } })
     } else {
       await create({ rule_code: v.rule_code, name: v.name, description: v.description, severity: v.severity as Severity, rule_config: config, is_enabled: v.is_enabled })
     }
@@ -90,66 +92,77 @@ function RuleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg border-white/[0.08] bg-[#111111] text-white animate-scale-in">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit Rule" : "New Checklist Rule"}</DialogTitle>
+          <DialogTitle className="text-white">{editing ? "Edit Rule" : "New Checklist Rule"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Rule Code *</Label>
-              <Input placeholder="e.g. NOTICE_90" {...register("rule_code")} disabled={!!editing} />
-              {errors.rule_code && <p className="text-xs text-red-500">{errors.rule_code.message}</p>}
+              <Label className="text-zinc-300">Rule Code *</Label>
+              <Input placeholder="e.g. NOTICE_90" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white placeholder:text-zinc-600 focus:border-orange-500/60" {...register("rule_code")} disabled={!!editing} />
+              {errors.rule_code && <p className="text-xs text-red-400">{errors.rule_code.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Severity *</Label>
+              <Label className="text-zinc-300">Severity *</Label>
               <Select defaultValue={editing?.severity ?? "medium"} onValueChange={(v) => setValue("severity", v as "critical" | "high" | "medium" | "low")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-zinc-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-white/[0.08] bg-[#1C1E26]">
                   {(["critical", "high", "medium", "low"] as const).map((s) => (
-                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                    <SelectItem key={s} value={s} className="capitalize text-zinc-300">{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Name *</Label>
-            <Input placeholder="Rule display name" {...register("name")} />
+            <Label className="text-zinc-300">Name *</Label>
+            <Input placeholder="Rule display name" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white placeholder:text-zinc-600 focus:border-orange-500/60" {...register("name")} />
           </div>
           <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Textarea rows={2} placeholder="What does this rule check?" {...register("description")} />
+            <Label className="text-zinc-300">Description</Label>
+            <Textarea rows={2} placeholder="What does this rule check?" className="rounded-xl border-white/[0.08] bg-[#1C1E26] text-white placeholder:text-zinc-600 focus:border-orange-500/60 resize-none" {...register("description")} />
           </div>
           <div className="space-y-1.5">
-            <Label>Rule Type *</Label>
+            <Label className="text-zinc-300">Rule Type *</Label>
             <Select defaultValue={existingType ?? "numeric_range"} onValueChange={(v) => setValue("rule_type", v as RuleType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {RULE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              <SelectTrigger className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-zinc-300">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/[0.08] bg-[#1C1E26]">
+                {RULE_TYPES.map((t) => <SelectItem key={t} value={t} className="text-zinc-300">{t}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           {/* Dynamic config */}
           {(ruleType === "numeric_range" || ruleType === "min_value") && (
-            <div className="space-y-1.5"><Label>Min Value</Label><Input type="number" {...register("cfg_min")} /></div>
+            <div className="space-y-1.5"><Label className="text-zinc-300">Min Value</Label><Input type="number" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white focus:border-orange-500/60" {...register("cfg_min")} /></div>
           )}
           {(ruleType === "numeric_range" || ruleType === "max_value") && (
-            <div className="space-y-1.5"><Label>Max Value</Label><Input type="number" {...register("cfg_max")} /></div>
+            <div className="space-y-1.5"><Label className="text-zinc-300">Max Value</Label><Input type="number" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white focus:border-orange-500/60" {...register("cfg_max")} /></div>
           )}
           {ruleType === "string_allowlist" && (
-            <div className="space-y-1.5"><Label>Allowed Values (comma-separated)</Label><Input placeholder="Mumbai, Delhi, Pune" {...register("cfg_allowed")} /></div>
+            <div className="space-y-1.5"><Label className="text-zinc-300">Allowed Values (comma-separated)</Label><Input placeholder="Mumbai, Delhi, Pune" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white focus:border-orange-500/60" {...register("cfg_allowed")} /></div>
           )}
           {ruleType === "boolean_present" && (
-            <div className="space-y-1.5"><Label>Field Name</Label><Input placeholder="e.g. termination_clause" {...register("cfg_field")} /></div>
+            <div className="space-y-1.5"><Label className="text-zinc-300">Field Name</Label><Input placeholder="e.g. termination_clause" className="h-11 rounded-xl border-white/[0.08] bg-[#1C1E26] text-white focus:border-orange-500/60" {...register("cfg_field")} /></div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-1">
             <Switch defaultChecked={editing?.is_enabled ?? true} onCheckedChange={(v) => setValue("is_enabled", v)} />
-            <Label>Enabled</Label>
+            <Label className="text-zinc-300 cursor-pointer select-none">Enabled</Label>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isLoading}>{isLoading ? "Saving…" : editing ? "Save Changes" : "Create Rule"}</Button>
+          <DialogFooter className="gap-2">
+            <button type="button" onClick={() => onOpenChange(false)}
+              className="flex h-10 items-center rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 hover:text-white transition-all hover:bg-white/[0.06] active:scale-[0.98]">
+              Cancel
+            </button>
+            <button type="submit" disabled={isLoading}
+              className="flex h-10 items-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-bold text-white hover:bg-orange-400 active:scale-[0.98] disabled:opacity-50 hover:scale-[1.02]">
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isLoading ? "Saving…" : editing ? "Save Changes" : "Create Rule"}
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -164,61 +177,70 @@ export default function ChecklistPage() {
   const [editing, setEditing] = useState<ChecklistRule | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  const revealRef = useStaggerReveal<HTMLTableSectionElement>(45)
+
   return (
     <div>
-      <PageHeader
-        title="Checklist Rules"
-        description="Business rules applied during checklist validation against Indian law requirements"
-        action={
-          <Button onClick={() => { setEditing(null); setFormOpen(true) }}>
-            <Plus className="w-4 h-4 mr-2" />Add Rule
-          </Button>
-        }
-      />
+      <div className="animate-fade-up">
+        <PageHeader
+          title="Checklist Rules"
+          description="Business rules applied during checklist validation against Indian law requirements"
+          action={
+            <button onClick={() => { setEditing(null); setFormOpen(true) }}
+              className="flex h-9 items-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-400 hover:scale-[1.02] active:scale-[0.98] animate-glow-pulse">
+              <Plus className="w-4 h-4 mr-2" />Add Rule
+            </button>
+          }
+        />
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
       ) : !rules?.length ? (
-        <EmptyState icon={CheckSquare} title="No checklist rules" description="Add custom rules to validate contract terms" action={{ label: "Add Rule", onClick: () => setFormOpen(true) }} />
+        <div className="animate-fade-in delay-75">
+          <EmptyState icon={CheckSquare} title="No checklist rules" description="Add custom rules to validate contract terms" action={{ label: "Add Rule", onClick: () => setFormOpen(true) }} />
+        </div>
       ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#111111] overflow-hidden animate-scale-in delay-75 hover:border-white/[0.1] transition-all duration-300">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-slate-50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Code</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Severity</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Type</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+              <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-zinc-600">Code</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-zinc-600">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-zinc-600">Severity</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-zinc-600 hidden md:table-cell">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-zinc-600">Status</th>
                 <th className="px-4 py-3 w-24" />
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={revealRef}>
               {rules.map((rule) => (
-                <tr key={rule.id} className="border-b last:border-0 hover:bg-slate-50">
+                <tr key={rule.id} className="reveal border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-all duration-200">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded font-mono">{rule.rule_code}</code>
-                      {rule.is_default && <Badge variant="outline" className="text-xs text-slate-500">Default</Badge>}
+                      <code className="text-xs bg-orange-500/12 text-orange-400 border border-orange-500/20 px-1.5 py-0.5 rounded font-mono">{rule.rule_code}</code>
+                      {rule.is_default && <Badge variant="outline" className="text-xs border-zinc-700 bg-zinc-800 text-zinc-400">Default</Badge>}
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{rule.name}</td>
+                  <td className="px-4 py-3 font-semibold text-white">{rule.name}</td>
                   <td className="px-4 py-3"><SeverityBadge severity={rule.severity} /></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 hidden md:table-cell">{rule.rule_config.type as string}</td>
+                  <td className="px-4 py-3 text-xs text-zinc-500 hidden md:table-cell">{rule.rule_config.type as string}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${rule.is_enabled ? "bg-green-50 text-green-700 border-green-200" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full border capitalize font-medium", rule.is_enabled ? "bg-emerald-500/12 text-emerald-400 border-emerald-500/20" : "bg-zinc-800 text-zinc-500 border-zinc-700")}>
                       {rule.is_enabled ? "Enabled" : "Disabled"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(rule); setFormOpen(true) }}>
+                      <button onClick={() => { setEditing(rule); setFormOpen(true) }}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 hover:bg-white/[0.06] hover:text-orange-400 transition-all duration-200 hover:scale-110 active:scale-90">
                         <Pencil className="w-3.5 h-3.5" />
-                      </Button>
+                      </button>
                       {!rule.is_default && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-600" onClick={() => setDeleteId(rule.id)}>
+                        <button onClick={() => setDeleteId(rule.id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-700 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 hover:scale-110 active:scale-90">
                           <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        </button>
                       )}
                     </div>
                   </td>
