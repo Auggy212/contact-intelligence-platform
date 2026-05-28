@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import type { LucideIcon } from "lucide-react"
 
 interface EmptyStateProps {
@@ -11,19 +12,16 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center py-20 text-center", className)}>
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/15 bg-orange-500/8">
-        <Icon className="h-7 w-7 text-orange-400" />
+    <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)}>
+      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <Icon className="w-7 h-7 text-slate-400" />
       </div>
-      <h3 className="text-base font-bold text-white">{title}</h3>
-      {description && <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">{description}</p>}
+      <h3 className="text-base font-semibold text-slate-700">{title}</h3>
+      {description && <p className="text-sm text-slate-500 mt-1 max-w-sm">{description}</p>}
       {action && (
-        <button
-          onClick={action.onClick}
-          className="mt-5 flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-orange-400 active:scale-[0.97]"
-        >
+        <Button onClick={action.onClick} className="mt-4">
           {action.label}
-        </button>
+        </Button>
       )}
     </div>
   )
