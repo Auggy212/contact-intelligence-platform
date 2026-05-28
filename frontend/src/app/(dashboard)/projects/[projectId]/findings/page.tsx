@@ -23,6 +23,14 @@ import { toast } from "sonner"
 
 const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"]
 
+const SEVERITY_RISK_FALLBACK: Record<Severity, number> = {
+  critical: 9, high: 7, medium: 5, low: 3, info: 1,
+}
+
+function effectiveRiskScore(finding: ClauseFlag): number {
+  return finding.risk_score ?? SEVERITY_RISK_FALLBACK[finding.severity as Severity] ?? 5
+}
+
 const flagTypeLabels: Record<string, string> = {
   missing_clause: "Missing Clause",
   weakened_clause: "Weakened Clause",
@@ -196,17 +204,20 @@ export default function FindingsPage() {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
-                    {finding.risk_score != null ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 rounded-full bg-slate-200">
-                          <div
-                            className={cn("h-full rounded-full", finding.risk_score >= 7 ? "bg-red-500" : finding.risk_score >= 4 ? "bg-orange-400" : "bg-blue-400")}
-                            style={{ width: `${(finding.risk_score / 10) * 100}%` }}
-                          />
+                    {(() => {
+                      const score = effectiveRiskScore(finding)
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-slate-200">
+                            <div
+                              className={cn("h-full rounded-full", score >= 7 ? "bg-red-500" : score >= 4 ? "bg-orange-400" : "bg-blue-400")}
+                              style={{ width: `${(score / 10) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-slate-500">{score}/10</span>
                         </div>
-                        <span className="text-xs text-slate-500">{finding.risk_score}/10</span>
-                      </div>
-                    ) : "—"}
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn("text-xs px-2 py-0.5 rounded-full border capitalize font-medium",

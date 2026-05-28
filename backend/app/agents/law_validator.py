@@ -608,6 +608,7 @@ class LawValidatorAgent(BaseAgent):
                     law_section_number=rule["section"],
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
+                    risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
                 ))
 
         # Full-text "required" checks (check_full_text=True rules)
@@ -640,6 +641,7 @@ class LawValidatorAgent(BaseAgent):
                     law_section_number=rule["section"],
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
+                    risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
                 ))
 
         # Per-clause "required" checks (check_full_text=False) — check each clause independently
@@ -675,6 +677,7 @@ class LawValidatorAgent(BaseAgent):
                     law_section_number=rule["section"],
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
+                    risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
                 ))
 
         self._log_run_complete(project_id, len(findings))

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { SeverityBadge } from "./severity-badge"
 import { useReviewFinding } from "@/lib/hooks/use-tasks"
 import type { ClauseFlag } from "@/lib/types/api"
-import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface FindingDetailSheetProps {
@@ -60,7 +60,20 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
           </div>
           <SheetTitle className="text-lg leading-snug">{finding.title}</SheetTitle>
           {finding.confidence != null && (
-            <SheetDescription>Confidence: {Math.round(finding.confidence * 100)}%{finding.risk_score != null ? ` · Risk Score: ${finding.risk_score}/10` : ""}</SheetDescription>
+            <SheetDescription className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1">
+                Confidence: {Math.round(finding.confidence * 100)}%
+                <span className="relative group">
+                  <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-100 opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg">
+                    How confident the AI is that this finding is a real issue. Higher % = stronger signal. Below 70% means the AI flagged it but is less certain — review carefully before acting.
+                  </span>
+                </span>
+              </span>
+              {finding.risk_score != null && (
+                <span className="text-slate-400">· Risk Score: {finding.risk_score}/10</span>
+              )}
+            </SheetDescription>
           )}
         </SheetHeader>
 

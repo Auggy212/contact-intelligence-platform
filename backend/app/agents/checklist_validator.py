@@ -413,14 +413,16 @@ class ChecklistValidatorAgent(BaseAgent):
                 f"Rule {failure['rule_code']} — {failure['name']}: "
                 + ("Not extractable" if result == "not_found" else "FAILED")
             )
+            eff_severity = severity if result == "fail" else FindingSeverity.INFO
             findings.append(self._build_finding(
                 flag_type="checklist_violation",
-                severity=severity if result == "fail" else FindingSeverity.INFO,
+                severity=eff_severity,
                 title=title,
                 description=failure.get("detail", f"Value not found for rule {failure['rule_code']}"),
                 recommendation=f"Review the {failure['name']} clause and ensure compliance.",
                 confidence=0.90 if result == "fail" else 0.55,
                 reasoning_trace=f"Regex-extracted values: {extracted}",
+                risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(eff_severity, 5),
             ))
 
         self._log_run_complete(project_id, len(findings))
