@@ -15,6 +15,7 @@ async def get_audit_log(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     action: str | None = Query(None),
+    resource_id: uuid.UUID | None = Query(None),
     tenant_id: str = Depends(get_tenant_id),
     session: AsyncSession = Depends(get_session),
 ):
@@ -24,4 +25,5 @@ async def get_audit_log(
         skip=skip,
         limit=limit,
         action_filter=action,
+        resource_id=resource_id,
     )

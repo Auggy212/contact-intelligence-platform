@@ -1,5 +1,17 @@
 import { apiClient } from "./client"
-import type { AnalysisTask, ClauseFlag, TaskTriggerRequest, ReviewFlagRequest, Severity, FlagType } from "@/lib/types/api"
+import type { AnalysisTask, ClauseFlag, TaskTriggerRequest, ReviewFlagRequest, Severity, FlagType, ModificationsResponse } from "@/lib/types/api"
+
+export interface ParsedClause {
+  id: string
+  heading: string | null
+  clause_number: string | null
+  body_text: string
+  paragraph_index: number
+  has_tracked_insertion: boolean
+  has_tracked_deletion: boolean
+  has_strikethrough: boolean
+  has_comment: boolean
+}
 
 export const tasksApi = {
   trigger: (projectId: string, data: TaskTriggerRequest): Promise<AnalysisTask[]> =>
@@ -7,6 +19,12 @@ export const tasksApi = {
 
   getTask: (taskId: string): Promise<AnalysisTask> =>
     apiClient.get(`/tasks/${taskId}`).then((r) => r.data),
+
+  listProjectTasks: (projectId: string): Promise<AnalysisTask[]> =>
+    apiClient.get(`/projects/${projectId}/tasks-list`).then((r) => r.data),
+
+  getClause: (projectId: string, clauseId: string): Promise<ParsedClause> =>
+    apiClient.get(`/projects/${projectId}/clauses/${clauseId}`).then((r) => r.data),
 
   getFindings: (
     projectId: string,
@@ -16,4 +34,7 @@ export const tasksApi = {
 
   reviewFinding: (flagId: string, data: ReviewFlagRequest): Promise<ClauseFlag> =>
     apiClient.patch(`/findings/${flagId}/review`, data).then((r) => r.data),
+
+  getModifications: (projectId: string): Promise<ModificationsResponse> =>
+    apiClient.get(`/projects/${projectId}/modifications`).then((r) => r.data),
 }

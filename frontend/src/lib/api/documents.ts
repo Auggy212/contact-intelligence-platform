@@ -1,9 +1,33 @@
 import { apiClient } from "./client"
 import type { ProjectFile, DocumentUploadResponse, FileRole } from "@/lib/types/api"
 
+export interface FileClause {
+  id: string
+  heading: string | null
+  clause_number: string | null
+  body_text: string
+  paragraph_index: number
+  has_tracked_insertion: boolean
+  has_tracked_deletion: boolean
+  has_strikethrough: boolean
+  has_comment: boolean
+}
+
 export const documentsApi = {
   list: (projectId: string): Promise<ProjectFile[]> =>
     apiClient.get(`/projects/${projectId}/documents`).then((r) => r.data),
+
+  // Stream the original uploaded file bytes (untouched) for in-browser preview
+  getContent: (projectId: string, fileId: string): Promise<ArrayBuffer> =>
+    apiClient
+      .get(`/projects/${projectId}/documents/${fileId}/content`, {
+        responseType: "arraybuffer",
+      })
+      .then((r) => r.data),
+
+  // All parsed clauses for one file, ordered by document position
+  listClauses: (projectId: string, fileId: string): Promise<FileClause[]> =>
+    apiClient.get(`/projects/${projectId}/documents/${fileId}/clauses`).then((r) => r.data),
 
   upload: (
     projectId: string,

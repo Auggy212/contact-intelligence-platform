@@ -46,10 +46,13 @@ class AuditService:
         skip: int = 0,
         limit: int = 50,
         action_filter: str | None = None,
+        resource_id: uuid.UUID | None = None,
     ) -> list[AuditLog]:
         query = select(AuditLog).where(AuditLog.organization_id == tenant_id)
         if action_filter:
             query = query.where(AuditLog.action == action_filter)
+        if resource_id:
+            query = query.where(AuditLog.resource_id == resource_id)
         query = query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit)
         result = await self._db.execute(query)
         return list(result.scalars().all())

@@ -67,3 +67,6 @@ desktop.ini
 *.key
 celerybeat-schedule
 celerybeat.pid
+
+# Runtime error/log files
+*.err

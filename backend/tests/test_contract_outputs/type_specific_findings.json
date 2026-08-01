@@ -1,0 +1,221 @@
+{
+  "_comment": "Priority 3: Example outputs demonstrating type-specific analysis. Each example shows a finding that only fires because the clause was correctly classified and the type-specific extraction branch ran.",
+
+  "examples": [
+
+    {
+      "clause_type": "payment",
+      "scenario": "Late payment interest added (type-specific: only extracted for PAYMENT clauses)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Value Change] Late Payment Interest: not specified → 18.0%",
+      "description": "[Clause Type: payment] Late Payment Interest was not specified in the baseline but is now set to '18.0%'. Review whether this new value is acceptable.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "late_payment_interest",
+        "label": "Late Payment Interest",
+        "old_value": null,
+        "new_value": 18.0,
+        "old_display": "not specified",
+        "new_display": "18.0%",
+        "direction": "added",
+        "change_category": "numeric",
+        "evidence": "New value introduced: 18.0%."
+      }
+    },
+
+    {
+      "clause_type": "sla",
+      "scenario": "SLA response time extended: 2h → 8h (type-specific: RESPONSE_TIME_HOURS only for SLA clauses)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] SLA Response Time: 2.0 hours → 8.0 hours",
+      "description": "[Clause Type: sla] SLA Response Time changed from 2.0 hours to 8.0 hours. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.77,
+      "value_change": {
+        "field": "sla_response_time_hours",
+        "label": "SLA Response Time",
+        "old_value": 2.0,
+        "new_value": 8.0,
+        "old_display": "2.0 hours",
+        "new_display": "8.0 hours",
+        "change_pct": 300.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "SLA Response Time: baseline=2.0 hours, new=8.0 hours, delta=+6.0 (+300%)"
+      }
+    },
+
+    {
+      "clause_type": "warranty",
+      "scenario": "Warranty period extracted from months (type-specific: WARRANTY months→days conversion)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Value Change] Warranty Period: 90 days → 30 days",
+      "description": "[Clause Type: warranty] Template stated '90 days' warranty; vendor draft states '1 month' (converted to 30 days). This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.77,
+      "value_change": {
+        "field": "warranty_days",
+        "label": "Warranty Period",
+        "old_value": 90.0,
+        "new_value": 30.0,
+        "old_display": "90 days",
+        "new_display": "30 days",
+        "change_pct": -66.7,
+        "direction": "decreased",
+        "change_category": "temporal",
+        "evidence": "Warranty Period: baseline=90 days, new=30 days, delta=-60.0 (-67%)"
+      }
+    },
+
+    {
+      "clause_type": "non_compete",
+      "scenario": "Non-compete duration detected and compared (type-specific: NON_COMPETE clause)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Non-Compete Duration: 12 months → 36 months",
+      "description": "[Clause Type: non_compete] Non-Compete Duration changed from 12 months to 36 months. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "non_compete_months",
+        "label": "Non-Compete Duration",
+        "old_value": 12.0,
+        "new_value": 36.0,
+        "change_pct": 200.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Non-Compete Duration: baseline=12 months, new=36 months, delta=+24.0 (+200%)"
+      }
+    },
+
+    {
+      "clause_type": "data_retention",
+      "scenario": "Data retention period extended from months to days (type-specific: months→days conversion)",
+      "flag_type": "template_deviation",
+      "severity": "low",
+      "risk_score": 3,
+      "title": "[Value Change] Data Retention: 30 days → 180 days",
+      "description": "[Clause Type: data_retention] Template specified 30 days data retention. Vendor draft specifies 6 months (180 days). Review against DPDP Act storage limitation obligations.",
+      "confidence": 0.73,
+      "value_change": {
+        "field": "data_retention_days",
+        "label": "Data Retention",
+        "old_value": 30.0,
+        "new_value": 180.0,
+        "change_pct": 500.0,
+        "direction": "increased",
+        "change_category": "temporal"
+      }
+    },
+
+    {
+      "clause_type": "assignment",
+      "scenario": "Assignment consent requirement added (type-specific: ASSIGNMENT categorical extraction)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Value Change] Assignment Consent: not_required → required",
+      "description": "[Clause Type: assignment] Assignment Consent changed from 'not_required' to 'required'. This is a material legal change requiring review.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "assignment_consent",
+        "label": "Assignment Consent",
+        "old_value": "not_required",
+        "new_value": "required",
+        "direction": "changed",
+        "change_category": "categorical",
+        "evidence": "Old: 'not_required' → New: 'required'"
+      }
+    },
+
+    {
+      "clause_type": "jurisdiction",
+      "scenario": "Arbitration seat specified for the first time (type-specific: JURISDICTION arbitration seat)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Arbitration Seat: mumbai → singapore",
+      "description": "[Clause Type: jurisdiction] Arbitration Seat changed from 'mumbai' to 'singapore'. This is a material legal change requiring review. Offshore arbitration substantially increases cost.",
+      "confidence": 0.77,
+      "value_change": {
+        "field": "arbitration_seat",
+        "label": "Arbitration Seat",
+        "old_value": "mumbai",
+        "new_value": "singapore",
+        "direction": "changed",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "categorical",
+        "evidence": "Old: 'mumbai' → New: 'singapore'"
+      }
+    },
+
+    {
+      "clause_type": "audit_rights",
+      "scenario": "Audit frequency reduced from annual to every 3 years (type-specific: AUDIT_RIGHTS)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Value Change] Audit Frequency: 12 months → 36 months",
+      "description": "[Clause Type: audit_rights] Audit Frequency changed from 12 months to 36 months. Review whether this reduces meaningful oversight.",
+      "confidence": 0.73,
+      "value_change": {
+        "field": "audit_frequency_months",
+        "label": "Audit Frequency",
+        "old_value": 12.0,
+        "new_value": 36.0,
+        "change_pct": 200.0,
+        "direction": "increased",
+        "change_category": "temporal"
+      }
+    },
+
+    {
+      "clause_type": "service_credits",
+      "scenario": "Service credit percentage halved (type-specific: SERVICE_CREDITS clause)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 6,
+      "title": "[Value Change] Service Credit: 10.0% → 2.0%",
+      "description": "[Clause Type: service_credits] Service Credit changed from 10.0% to 2.0%. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "service_credit_percent",
+        "label": "Service Credit",
+        "old_value": 10.0,
+        "new_value": 2.0,
+        "change_pct": -80.0,
+        "direction": "decreased",
+        "change_category": "numeric"
+      }
+    },
+
+    {
+      "clause_type": "insurance",
+      "scenario": "Insurance amount increased (type-specific: INSURANCE monetary extraction)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 4,
+      "title": "[Value Change] Insurance Requirement: ₹1.00 Cr → ₹5.00 Cr",
+      "description": "[Clause Type: insurance] Insurance Requirement changed from ₹1.00 Cr to ₹5.00 Cr. This is favourable — a higher value strengthens client protection.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "insurance_amount_inr",
+        "label": "Insurance Requirement",
+        "old_value": 10000000.0,
+        "new_value": 50000000.0,
+        "change_pct": 400.0,
+        "direction": "increased",
+        "change_category": "monetary"
+      }
+    }
+  ]
+}

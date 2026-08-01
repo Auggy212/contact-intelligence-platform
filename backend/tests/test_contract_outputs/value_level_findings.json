@@ -1,0 +1,393 @@
+{
+  "_comment": "Priority 1: Example outputs for value-level difference engine findings. These fire even when overall text similarity is high (e.g. 85%+). Every finding includes change_category and evidence fields.",
+
+  "examples": [
+
+    {
+      "scenario": "Payment terms extended: 30 days → 90 days",
+      "clause_type": "payment",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Payment Terms: 30 days → 90 days",
+      "description": "[Clause Type: payment] Payment Terms changed from 30 days to 90 days. This is unfavourable — a higher value increases risk or cost for the client. Text similarity to template clause 'PAYMENT TERMS': 87%.",
+      "recommendation": "Review this change carefully. Payment Terms changed from 30 days to 90 days. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.79,
+      "reasoning_trace": "clause_type=payment; field=payment_days; old=30.0; new=90.0; change_pct=200.0%; text_similarity=0.870; heading_matched=true",
+      "value_change": {
+        "field": "payment_days",
+        "label": "Payment Terms",
+        "old_value": 30.0,
+        "new_value": 90.0,
+        "old_display": "30 days",
+        "new_display": "90 days",
+        "change_pct": 200.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Payment Terms: baseline=30 days, new=90 days, delta=+60.0 (+200%)",
+        "explanation": "Payment Terms changed from 30 days to 90 days. This is unfavourable — a higher value increases risk or cost for the client."
+      }
+    },
+
+    {
+      "scenario": "Advance payment raised: 10% → 30%",
+      "clause_type": "payment",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Advance Payment: 10.0% → 30.0%",
+      "description": "[Clause Type: payment] Advance Payment changed from 10.0% to 30.0%. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.79,
+      "reasoning_trace": "clause_type=payment; field=advance_percent; old=10.0; new=30.0; change_pct=200.0%; text_similarity=0.870; heading_matched=true",
+      "value_change": {
+        "field": "advance_percent",
+        "label": "Advance Payment",
+        "old_value": 10.0,
+        "new_value": 30.0,
+        "old_display": "10.0%",
+        "new_display": "30.0%",
+        "change_pct": 200.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "numeric",
+        "evidence": "Advance Payment: baseline=10.0%, new=30.0%, delta=+20.0 (+200%)"
+      }
+    },
+
+    {
+      "scenario": "Contract value doubled: ₹50L → ₹1 Crore",
+      "clause_type": "payment",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Contract Value: ₹50.00L → ₹1.00 Cr",
+      "description": "[Clause Type: payment] Contract Value changed from ₹50.00L to ₹1.00 Cr. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.77,
+      "reasoning_trace": "clause_type=payment; field=contract_value_inr; old=5000000.0; new=10000000.0; change_pct=100.0%",
+      "value_change": {
+        "field": "contract_value_inr",
+        "label": "Contract Value",
+        "old_value": 5000000.0,
+        "new_value": 10000000.0,
+        "old_display": "₹50.00L",
+        "new_display": "₹1.00 Cr",
+        "change_pct": 100.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "monetary",
+        "evidence": "Contract Value: baseline=₹50.00L, new=₹1.00 Cr, delta=+5000000.0 (+100%)"
+      }
+    },
+
+    {
+      "scenario": "Termination notice reduced: 60 days → 15 days",
+      "clause_type": "termination",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Termination Notice: 60 days → 15 days",
+      "description": "[Clause Type: termination] Termination Notice changed from 60 days to 15 days. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.81,
+      "reasoning_trace": "clause_type=termination; field=notice_days; old=60.0; new=15.0; change_pct=-75.0%",
+      "value_change": {
+        "field": "notice_days",
+        "label": "Termination Notice",
+        "old_value": 60.0,
+        "new_value": 15.0,
+        "old_display": "60 days",
+        "new_display": "15 days",
+        "change_pct": -75.0,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Termination Notice: baseline=60 days, new=15 days, delta=-45.0 (-75%)"
+      }
+    },
+
+    {
+      "scenario": "Liability cap reduced: 12 months → 3 months of fees",
+      "clause_type": "liability",
+      "flag_type": "template_deviation",
+      "severity": "critical",
+      "risk_score": 8,
+      "title": "[Value Change] Liability Cap: 12 months → 3 months",
+      "description": "[Clause Type: liability] Liability Cap changed from 12 months to 3 months. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.83,
+      "reasoning_trace": "clause_type=liability; field=liability_cap_months; old=12.0; new=3.0; change_pct=-75.0%",
+      "value_change": {
+        "field": "liability_cap_months",
+        "label": "Liability Cap",
+        "old_value": 12.0,
+        "new_value": 3.0,
+        "old_display": "12 months",
+        "new_display": "3 months",
+        "change_pct": -75.0,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 8,
+        "change_category": "temporal",
+        "evidence": "Liability Cap: baseline=12 months, new=3 months, delta=-9.0 (-75%)"
+      }
+    },
+
+    {
+      "scenario": "Liability cap REMOVED entirely (value removal — Priority 1)",
+      "clause_type": "liability",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Liability Cap: 12 months → not specified",
+      "description": "[Clause Type: liability] Liability Cap was present in the baseline (12 months) but is absent in the new version. This removal may weaken contractual protections.",
+      "confidence": 0.79,
+      "reasoning_trace": "clause_type=liability; field=liability_cap_months; old=12.0; new=None; direction=removed",
+      "value_change": {
+        "field": "liability_cap_months",
+        "label": "Liability Cap",
+        "old_value": 12.0,
+        "new_value": null,
+        "old_display": "12 months",
+        "new_display": "not specified",
+        "change_pct": null,
+        "direction": "removed",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Baseline had: 12 months; new version has no value."
+      }
+    },
+
+    {
+      "scenario": "SLA uptime downgraded: 99.9% → 95%",
+      "clause_type": "sla",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] SLA Uptime: 99.9% → 95.0%",
+      "description": "[Clause Type: sla] SLA Uptime changed from 99.9% to 95.0%. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.77,
+      "reasoning_trace": "clause_type=sla; field=sla_uptime_percent; old=99.9; new=95.0; change_pct=-5.0%",
+      "value_change": {
+        "field": "sla_uptime_percent",
+        "label": "SLA Uptime",
+        "old_value": 99.9,
+        "new_value": 95.0,
+        "old_display": "99.9%",
+        "new_display": "95.0%",
+        "change_pct": -5.0,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "numeric",
+        "evidence": "SLA Uptime: baseline=99.9%, new=95.0%, delta=-4.9 (-5%)"
+      }
+    },
+
+    {
+      "scenario": "SLA uptime REMOVED (best-efforts replaces SLA)",
+      "clause_type": "sla",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] SLA Uptime: 99.5% → not specified",
+      "description": "[Clause Type: sla] SLA Uptime was present in the baseline (99.5%) but is absent in the new version. This removal may weaken contractual protections.",
+      "confidence": 0.76,
+      "reasoning_trace": "clause_type=sla; field=sla_uptime_percent; old=99.5; new=None; direction=removed",
+      "value_change": {
+        "field": "sla_uptime_percent",
+        "label": "SLA Uptime",
+        "old_value": 99.5,
+        "new_value": null,
+        "old_display": "99.5%",
+        "new_display": "not specified",
+        "change_pct": null,
+        "direction": "removed",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "numeric",
+        "evidence": "Baseline had: 99.5%; new version has no value."
+      }
+    },
+
+    {
+      "scenario": "Warranty period reduced: 90 days → 14 days",
+      "clause_type": "warranty",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Warranty Period: 90 days → 14 days",
+      "description": "[Clause Type: warranty] Warranty Period changed from 90 days to 14 days. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.79,
+      "reasoning_trace": "clause_type=warranty; field=warranty_days; old=90.0; new=14.0; change_pct=-84.4%",
+      "value_change": {
+        "field": "warranty_days",
+        "label": "Warranty Period",
+        "old_value": 90.0,
+        "new_value": 14.0,
+        "old_display": "90 days",
+        "new_display": "14 days",
+        "change_pct": -84.4,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Warranty Period: baseline=90 days, new=14 days, delta=-76.0 (-84%)"
+      }
+    },
+
+    {
+      "scenario": "Warranty REMOVED (AS IS clause inserted)",
+      "clause_type": "warranty",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Warranty Period: 90 days → not specified",
+      "description": "[Clause Type: warranty] Warranty Period was present in the baseline (90 days) but is absent in the new version. This removal may weaken contractual protections.",
+      "confidence": 0.77,
+      "reasoning_trace": "clause_type=warranty; field=warranty_days; old=90.0; new=None; direction=removed",
+      "value_change": {
+        "field": "warranty_days",
+        "label": "Warranty Period",
+        "old_value": 90.0,
+        "new_value": null,
+        "old_display": "90 days",
+        "new_display": "not specified",
+        "change_pct": null,
+        "direction": "removed",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Baseline had: 90 days; new version has no value."
+      }
+    },
+
+    {
+      "scenario": "Insurance requirement halved: ₹2 Cr → ₹1 Cr",
+      "clause_type": "insurance",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 6,
+      "title": "[Value Change] Insurance Requirement: ₹2.00 Cr → ₹1.00 Cr",
+      "description": "[Clause Type: insurance] Insurance Requirement changed from ₹2.00 Cr to ₹1.00 Cr. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.77,
+      "value_change": {
+        "field": "insurance_amount_inr",
+        "label": "Insurance Requirement",
+        "old_value": 20000000.0,
+        "new_value": 10000000.0,
+        "old_display": "₹2.00 Cr",
+        "new_display": "₹1.00 Cr",
+        "change_pct": -50.0,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 6,
+        "change_category": "monetary",
+        "evidence": "Insurance Requirement: baseline=₹2.00 Cr, new=₹1.00 Cr, delta=-10000000.0 (-50%)"
+      }
+    },
+
+    {
+      "scenario": "IP ownership reversed: client → vendor (categorical)",
+      "clause_type": "intellectual_property",
+      "flag_type": "template_deviation",
+      "severity": "critical",
+      "risk_score": 9,
+      "title": "[Value Change] IP Ownership: client → vendor",
+      "description": "[Clause Type: intellectual_property] IP Ownership changed from 'client' to 'vendor'. This is a material legal change requiring review.",
+      "confidence": 0.81,
+      "value_change": {
+        "field": "ip_owner",
+        "label": "IP Ownership",
+        "old_value": "client",
+        "new_value": "vendor",
+        "old_display": "client",
+        "new_display": "vendor",
+        "change_pct": null,
+        "direction": "changed",
+        "severity": "critical",
+        "risk_score": 9,
+        "change_category": "categorical",
+        "evidence": "Old: 'client' → New: 'vendor'"
+      }
+    },
+
+    {
+      "scenario": "Governing law changed: India → England",
+      "clause_type": "governing_law",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 8,
+      "title": "[Value Change] Governing Law: india → england",
+      "description": "[Clause Type: governing_law] Governing Law changed from 'india' to 'england'. This is a material legal change requiring review.",
+      "confidence": 0.79,
+      "value_change": {
+        "field": "governing_law",
+        "label": "Governing Law",
+        "old_value": "india",
+        "new_value": "england",
+        "old_display": "india",
+        "new_display": "england",
+        "change_pct": null,
+        "direction": "changed",
+        "severity": "high",
+        "risk_score": 8,
+        "change_category": "categorical",
+        "evidence": "Old: 'india' → New: 'england'"
+      }
+    },
+
+    {
+      "scenario": "Non-compete duration increased: 12 months → 36 months (above absolute trigger)",
+      "clause_type": "non_compete",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Value Change] Non-Compete Duration: 12 months → 36 months",
+      "description": "[Clause Type: non_compete] Non-Compete Duration changed from 12 months to 36 months. This is unfavourable — a higher value increases risk or cost for the client.",
+      "confidence": 0.77,
+      "value_change": {
+        "field": "non_compete_months",
+        "label": "Non-Compete Duration",
+        "old_value": 12.0,
+        "new_value": 36.0,
+        "old_display": "12 months",
+        "new_display": "36 months",
+        "change_pct": 200.0,
+        "direction": "increased",
+        "severity": "high",
+        "risk_score": 7,
+        "change_category": "temporal",
+        "evidence": "Non-Compete Duration: baseline=12 months, new=36 months, delta=+24.0 (+200%)"
+      }
+    },
+
+    {
+      "scenario": "Service credit reduced: 10% → 2%",
+      "clause_type": "service_credits",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 6,
+      "title": "[Value Change] Service Credit: 10.0% → 2.0%",
+      "description": "[Clause Type: service_credits] Service Credit changed from 10.0% to 2.0%. This is unfavourable — a lower value weakens client protection.",
+      "confidence": 0.75,
+      "value_change": {
+        "field": "service_credit_percent",
+        "label": "Service Credit",
+        "old_value": 10.0,
+        "new_value": 2.0,
+        "old_display": "10.0%",
+        "new_display": "2.0%",
+        "change_pct": -80.0,
+        "direction": "decreased",
+        "severity": "high",
+        "risk_score": 6,
+        "change_category": "numeric",
+        "evidence": "Service Credit: baseline=10.0%, new=2.0%, delta=-8.0 (-80%)"
+      }
+    }
+  ]
+}

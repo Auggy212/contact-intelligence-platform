@@ -241,6 +241,14 @@ async def _run_agent_inline(task, tenant_id: str, session: AsyncSession) -> None
             else:
                 continue
 
+            # value_changes may arrive as dataclass instances — store plain dicts
+            # so JSONB round-trips (mirrors the Celery worker path).
+            raw_vc = finding.get("value_changes") or []
+            vc_list = [
+                v.__dict__ if hasattr(v, "__dict__") else v
+                for v in raw_vc
+            ] if raw_vc else None
+
             flag = ClauseFlag(
                 clause_id=clause_uuid,
                 task_id=task.id,
@@ -255,10 +263,17 @@ async def _run_agent_inline(task, tenant_id: str, session: AsyncSession) -> None
                 confidence=finding.get("confidence"),
                 reasoning_trace=finding.get("reasoning_trace"),
                 risk_score=finding.get("risk_score"),
+                clause_type=finding.get("clause_type"),
+                value_changes=vc_list,
                 law_act_name=finding.get("law_act_name"),
                 law_section_number=finding.get("law_section_number"),
                 law_retrieved_text=finding.get("law_retrieved_text"),
                 law_jurisdiction=finding.get("law_jurisdiction"),
+                # These two were missing here — the reason the Fixes tab was
+                # always empty in testing/demo mode (this inline path is what
+                # actually runs, not the Celery worker).
+                suggestion=finding.get("suggestion"),
+                priority=finding.get("priority"),
             )
             session.add(flag)
 
@@ -293,6 +308,58 @@ async def get_task_status(
     return await svc.get_by_id(task_id)
 
 
+@router.get("/projects/{project_id}/tasks-list", response_model=list[TaskOut])
+async def list_project_tasks(
+    project_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.models.task import AnalysisTask
+    from sqlalchemy import select
+    result = await session.execute(
+        select(AnalysisTask)
+        .where(
+            AnalysisTask.project_id == project_id,
+            AnalysisTask.organization_id == uuid.UUID(tenant_id),
+        )
+        .order_by(AnalysisTask.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.get("/projects/{project_id}/clauses/{clause_id}")
+async def get_clause(
+    project_id: uuid.UUID,
+    clause_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.models.clause import ParsedClause
+    from app.core.exceptions import NotFoundError
+    from sqlalchemy import select
+    result = await session.execute(
+        select(ParsedClause).where(
+            ParsedClause.id == clause_id,
+            ParsedClause.project_id == project_id,
+            ParsedClause.organization_id == uuid.UUID(tenant_id),
+        )
+    )
+    clause = result.scalar_one_or_none()
+    if not clause:
+        raise NotFoundError("Clause not found")
+    return {
+        "id": str(clause.id),
+        "heading": clause.heading,
+        "clause_number": clause.clause_number,
+        "body_text": clause.body_text,
+        "paragraph_index": clause.paragraph_index,
+        "has_tracked_insertion": clause.has_tracked_insertion,
+        "has_tracked_deletion": clause.has_tracked_deletion,
+        "has_strikethrough": clause.has_strikethrough,
+        "has_comment": clause.has_comment,
+    }
+
+
 @router.get("/projects/{project_id}/findings", response_model=list[ClauseFlagOut])
 async def list_findings(
     project_id: uuid.UUID,
@@ -320,6 +387,64 @@ async def list_findings(
     query = query.order_by(ClauseFlag.severity, ClauseFlag.created_at.desc())
     result = await session.execute(query)
     return result.scalars().all()
+
+
+@router.get("/projects/{project_id}/modifications")
+async def list_modifications(
+    project_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Return all findings that carry a suggested modification, for the
+    Modifications summary report. Grouped by priority (must_fix / should_fix /
+    optional) and ordered by risk within each group.
+    """
+    from app.models.clause import ClauseFlag
+    from sqlalchemy import select, func
+
+    result = await session.execute(
+        select(ClauseFlag).where(
+            ClauseFlag.project_id == project_id,
+            ClauseFlag.organization_id == uuid.UUID(tenant_id),
+            ClauseFlag.suggestion.isnot(None),
+            # Exclude JSONB `null` (findings that ran through the suggestion path
+            # but produced no concrete fix) — only real suggestion objects.
+            func.jsonb_typeof(ClauseFlag.suggestion) == "object",
+        )
+    )
+    flags = result.scalars().all()
+
+    _prio_order = {"must_fix": 0, "should_fix": 1, "optional": 2}
+    items = [
+        {
+            "id": str(f.id),
+            "clause_id": str(f.clause_id),
+            "flag_type": f.flag_type,
+            "severity": f.severity,
+            "priority": f.priority or "should_fix",
+            "title": f.title,
+            "clause_type": f.clause_type,
+            "risk_score": f.risk_score,
+            "suggestion": f.suggestion,
+            "reviewer_status": f.reviewer_status,
+        }
+        for f in flags
+    ]
+    items.sort(
+        key=lambda x: (_prio_order.get(x["priority"], 1), -(x["risk_score"] or 0))
+    )
+
+    counts = {"must_fix": 0, "should_fix": 0, "optional": 0}
+    for it in items:
+        counts[it["priority"]] = counts.get(it["priority"], 0) + 1
+
+    return {
+        "project_id": str(project_id),
+        "total": len(items),
+        "counts": counts,
+        "modifications": items,
+    }
 
 
 @router.patch("/findings/{flag_id}/review", response_model=ClauseFlagOut)

@@ -1,0 +1,97 @@
+{
+  "_comment": "Ground-truth expected findings for Test_Contracts_new. Each expected item is a signal the engine SHOULD produce. Matching is done by 'field' (for value changes), 'concept' (for semantic), 'rule' (for checklist), or 'keyword' (substring in title/description). Precision/recall are computed against these. This is the lawyer-annotated 'what should be caught' reference.",
+
+  "contracts": {
+    "template": "FILE_A_Company_Template_DigitalForge_Apex_MSA.docx",
+    "proposed": "FILE_B_Vendor_Proposed_AllEnhancementsTested.docx",
+    "vendor_reply": "FILE_C_VendorCounterRedline_TrackedChanges_v1.docx"
+  },
+
+  "template_comparison": {
+    "_desc": "File A vs File B — expected value changes, categorical changes, and semantic concepts",
+    "value_changes": [
+      { "field": "payment_days",            "old": 30,   "new": 90,   "min_severity": "high" },
+      { "field": "advance_percent",         "old": 10,   "new": 40,   "min_severity": "high" },
+      { "field": "contract_value_inr",      "old": 7500000, "new": 15000000, "min_severity": "high" },
+      { "field": "late_payment_interest",   "old": 12,   "new": 24,   "min_severity": "medium" },
+      { "field": "penalty_percent",         "old": 1,    "new": 3,    "min_severity": "medium" },
+      { "field": "duration_months",         "old": 24,   "new": 48,   "min_severity": "medium" },
+      { "field": "sla_uptime_percent",      "old": 99.9, "new": 95,   "min_severity": "high" },
+      { "field": "sla_response_time_hours", "old": 2,    "new": 8,    "min_severity": "medium" },
+      { "field": "service_credit_percent",  "old": 10,   "new": 2,    "min_severity": "medium" },
+      { "field": "warranty_days",           "old": 90,   "new": 14,   "min_severity": "high" },
+      { "field": "notice_days",             "old": 60,   "new": 7,    "min_severity": "high" },
+      { "field": "confidentiality_years",   "old": 3,    "new": 0.5,  "min_severity": "high" },
+      { "field": "non_compete_months",      "old": 12,   "new": 36,   "min_severity": "high" },
+      { "field": "non_solicitation_months", "old": 12,   "new": 24,   "min_severity": "medium" },
+      { "field": "audit_frequency_months",  "old": 12,   "new": 36,   "min_severity": "medium" }
+    ],
+    "value_removals": [
+      { "field": "insurance_amount_inr",  "min_severity": "medium" },
+      { "field": "liability_cap_months",  "min_severity": "high" },
+      { "field": "renewal_notice_days",   "min_severity": "high" }
+    ],
+    "categorical_changes": [
+      { "field": "court_city",           "old": "mumbai",           "new": "bengaluru",       "min_severity": "high" },
+      { "field": "ip_owner",             "old": "client",           "new": "vendor",          "min_severity": "high" },
+      { "field": "indemnity_direction",  "old": "vendor_to_client", "new": "client_to_vendor","min_severity": "high" },
+      { "field": "assignment_consent",   "old": "required",         "new": "not_required",    "min_severity": "medium" },
+      { "field": "subcontracting_consent","old": "required",        "new": "not_required",    "min_severity": "medium" }
+    ],
+    "concepts": [
+      { "concept": "Renewal terms changed to automatic",            "min_severity": "medium" },
+      { "concept": "SLA service credits too low",                   "min_severity": "medium" },
+      { "concept": "Governing law clause absent",                   "min_severity": "high" },
+      { "concept": "Non-compete period unreasonably long",          "min_severity": "high" },
+      { "concept": "Non-solicitation scope overreach",              "min_severity": "medium" },
+      { "concept": "Data retention obligation conflicts with DPDP", "min_severity": "high" },
+      { "concept": "Insurance coverage inadequate or removed",      "min_severity": "medium" },
+      { "concept": "Exclusivity prevents multi-vendor",             "min_severity": "high" },
+      { "concept": "IP ownership reversed",                         "min_severity": "high" },
+      { "concept": "Liability cap removed or unlimited",            "min_severity": "high" },
+      { "concept": "Indemnification reversed",                      "min_severity": "high" },
+      { "concept": "Jurisdiction changed",                         "min_severity": "high" },
+      { "concept": "Payment terms extended beyond MSME",            "min_severity": "high" },
+      { "concept": "Warranty period weakened",                      "min_severity": "high" },
+      { "concept": "Data protection weakened",                      "min_severity": "high" }
+    ]
+  },
+
+  "vendor_diff": {
+    "_desc": "File B vs File C — vendor changes that must be detected (tracked-change concessions and unchanged risks)",
+    "value_changes": [
+      { "field": "duration_months",        "old": 48, "new": 36 },
+      { "field": "payment_days",           "old": 90, "new": 45 },
+      { "field": "advance_percent",        "old": 40, "new": 25 },
+      { "field": "sla_uptime_percent",     "old": 95, "new": 99 },
+      { "field": "warranty_days",          "old": 14, "new": 30 },
+      { "field": "confidentiality_years",  "old": 0.5, "new": 1.5 },
+      { "field": "notice_days",            "old": 7,  "new": 30 }
+    ],
+    "new_clauses": [
+      { "keyword": "withhold",     "min_severity": "medium" },
+      { "keyword": "solicit",      "min_severity": "medium" }
+    ]
+  },
+
+  "law_validation": {
+    "_desc": "File B — Indian law rules that must fire",
+    "rules": [
+      { "keyword": "MSME",             "min_severity": "high" },
+      { "keyword": "non-compete",      "min_severity": "high" },
+      { "keyword": "governing law",    "min_severity": "high" },
+      { "keyword": "data",             "min_severity": "high" }
+    ]
+  },
+
+  "checklist_validation": {
+    "_desc": "File B — checklist rules that must FAIL",
+    "rules": [
+      { "keyword": "Duration",  "min_severity": "medium" },
+      { "keyword": "Court",     "min_severity": "medium" },
+      { "keyword": "Payment",   "min_severity": "medium" },
+      { "keyword": "Advance",   "min_severity": "medium" },
+      { "keyword": "Contract",  "min_severity": "medium" }
+    ]
+  }
+}

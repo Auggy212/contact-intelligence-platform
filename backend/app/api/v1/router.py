@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     organizations,
     projects,
     tasks,
+    transparency,
     users,
     webhooks,
 )
@@ -26,6 +27,7 @@ api_router.include_router(projects.router)
 api_router.include_router(documents.router)
 api_router.include_router(tasks.router)
 api_router.include_router(checklist.router)
+api_router.include_router(transparency.router)
 api_router.include_router(library.router)
 api_router.include_router(audit.router)
 api_router.include_router(billing.router)

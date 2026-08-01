@@ -76,6 +76,15 @@ class ClauseFlag(Base, UUIDPrimaryKey, TimestampMixin):
     law_retrieved_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     law_jurisdiction: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
+    # Clause classification and value-level change evidence
+    clause_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    value_changes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # Deterministic modification suggestion (original → suggested + reason)
+    suggestion: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Fix priority derived from severity: "must_fix" | "should_fix" | "optional"
+    priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     # Reviewer decision
     reviewer_status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
     reviewer_note: Mapped[str | None] = mapped_column(Text, nullable=True)

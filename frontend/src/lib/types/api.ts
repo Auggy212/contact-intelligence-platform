@@ -14,15 +14,20 @@ export type SubscriptionPlan = "trial" | "starter" | "professional" | "enterpris
 export type SubscriptionStatus = "active" | "past_due" | "canceled" | "trialing"
 export type Role = "admin" | "reviewer" | "viewer"
 export type FlagType =
+  | "template_deviation"
+  | "clause_added"
+  | "clause_missing"
+  | "vendor_redline"
+  | "law_violation"
+  | "law_at_risk"
+  | "checklist_violation"
+  | "checklist_fail"
+  | "checklist_not_found"
   | "missing_clause"
   | "weakened_clause"
   | "modified"
   | "deleted"
   | "added"
-  | "law_violation"
-  | "law_at_risk"
-  | "checklist_fail"
-  | "checklist_not_found"
 
 // ── Base ─────────────────────────────────────────────────────────────────────
 
@@ -90,6 +95,31 @@ export interface TaskTriggerRequest {
 
 // ── Findings ─────────────────────────────────────────────────────────────────
 
+export interface ValueChange {
+  field: string
+  label: string
+  old_value: number | string | null
+  new_value: number | string | null
+  old_display: string
+  new_display: string
+  change_pct: number | null
+  direction: "increased" | "decreased" | "changed" | "added"
+  severity: Severity
+  risk_score: number
+  explanation: string
+  clause_type: string
+}
+
+export type SuggestionPriority = "must_fix" | "should_fix" | "optional"
+
+export interface Suggestion {
+  original_text: string
+  suggested_text: string
+  reason: string
+  priority: SuggestionPriority
+  basis: "template" | "vendor_draft" | "statute" | "checklist_rule" | "concept"
+}
+
 export interface ClauseFlag extends BaseEntity {
   clause_id: string
   task_id: string
@@ -103,12 +133,42 @@ export interface ClauseFlag extends BaseEntity {
   confidence: number | null
   reasoning_trace: string | null
   risk_score: number | null
+  clause_type: string | null
+  value_changes: Record<string, ValueChange[]> | null
+  suggestion: Suggestion | null
+  priority: SuggestionPriority | null
   law_act_name: string | null
   law_section_number: string | null
   law_retrieved_text: string | null
   law_jurisdiction: string | null
   reviewer_status: ReviewerStatus
   reviewer_note: string | null
+}
+
+export interface ModificationItem {
+  id: string
+  clause_id: string
+  flag_type: FlagType
+  severity: Severity
+  priority: SuggestionPriority
+  title: string
+  clause_type: string | null
+  risk_score: number | null
+  suggestion: Suggestion
+  reviewer_status: ReviewerStatus
+}
+
+export interface ModificationsResponse {
+  project_id: string
+  total: number
+  counts: Record<SuggestionPriority, number>
+  modifications: ModificationItem[]
+}
+
+export const PRIORITY_CONFIG: Record<SuggestionPriority, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  must_fix:   { label: "Must Fix",   color: "text-sev-critical", bg: "bg-sev-critical-bg", border: "border-sev-critical-border", dot: "bg-sev-critical" },
+  should_fix: { label: "Should Fix", color: "text-sev-medium",   bg: "bg-sev-medium-bg",   border: "border-sev-medium-border",   dot: "bg-sev-medium" },
+  optional:   { label: "Optional",   color: "text-sev-info",     bg: "bg-sev-info-bg",     border: "border-sev-info-border",     dot: "bg-sev-info" },
 }
 
 export interface ReviewFlagRequest {
@@ -330,10 +390,10 @@ export const TASK_TYPE_LABELS: Record<TaskType, { label: string; description: st
   },
 }
 
-export const SEVERITY_CONFIG: Record<Severity, { label: string; color: string; bg: string; border: string; dot: string }> = {
-  critical: { label: "Critical", color: "text-red-700", bg: "bg-red-50", border: "border-red-200", dot: "bg-red-500" },
-  high: { label: "High", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", dot: "bg-orange-500" },
-  medium: { label: "Medium", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", dot: "bg-yellow-500" },
-  low: { label: "Low", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", dot: "bg-blue-400" },
-  info: { label: "Info", color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200", dot: "bg-gray-400" },
+export const SEVERITY_CONFIG: Record<Severity, { label: string; color: string; bg: string; border: string; dot: string; rank: number }> = {
+  critical: { label: "Critical", color: "text-sev-critical", bg: "bg-sev-critical-bg", border: "border-sev-critical-border", dot: "bg-sev-critical", rank: 4 },
+  high:     { label: "High",     color: "text-sev-high",     bg: "bg-sev-high-bg",     border: "border-sev-high-border",     dot: "bg-sev-high",     rank: 3 },
+  medium:   { label: "Medium",   color: "text-sev-medium",   bg: "bg-sev-medium-bg",   border: "border-sev-medium-border",   dot: "bg-sev-medium",   rank: 2 },
+  low:      { label: "Low",      color: "text-sev-low",      bg: "bg-sev-low-bg",      border: "border-sev-low-border",      dot: "bg-sev-low",      rank: 1 },
+  info:     { label: "Info",     color: "text-sev-info",     bg: "bg-sev-info-bg",     border: "border-sev-info-border",     dot: "bg-sev-info",     rank: 0 },
 }

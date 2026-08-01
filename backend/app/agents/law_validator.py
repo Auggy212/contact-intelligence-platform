@@ -13,6 +13,7 @@ import re
 from typing import Any
 
 from app.agents.base_agent import PROMPT_VERSION, BaseAgent
+from app.agents import suggestion_builder as sb
 from app.core.constants import FindingSeverity
 from app.core.logging import get_logger
 
@@ -609,6 +610,14 @@ class LawValidatorAgent(BaseAgent):
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
                     risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
+                    suggestion=sb.for_law_violation(
+                        matched_text=matched_text,
+                        recommendation=rule["recommendation"],
+                        act_name=rule["act_name"],
+                        section=rule["section"],
+                        severity=rule["severity"],
+                    ).as_dict(),
+                    priority=sb.priority_for(rule["severity"]),
                 ))
 
         # Full-text "required" checks (check_full_text=True rules)
@@ -642,6 +651,14 @@ class LawValidatorAgent(BaseAgent):
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
                     risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
+                    suggestion=sb.for_law_violation(
+                        matched_text=None,
+                        recommendation=rule["recommendation"],
+                        act_name=rule["act_name"],
+                        section=rule["section"],
+                        severity=rule["severity"],
+                    ).as_dict(),
+                    priority=sb.priority_for(rule["severity"]),
                 ))
 
         # Per-clause "required" checks (check_full_text=False) — check each clause independently
@@ -678,6 +695,14 @@ class LawValidatorAgent(BaseAgent):
                     law_retrieved_text=rule["law_text"][:500],
                     law_jurisdiction=rule["jurisdiction"],
                     risk_score={"critical": 9, "high": 7, "medium": 5, "low": 3, "info": 1}.get(rule["severity"], 5),
+                    suggestion=sb.for_law_violation(
+                        matched_text=None,
+                        recommendation=rule["recommendation"],
+                        act_name=rule["act_name"],
+                        section=rule["section"],
+                        severity=rule["severity"],
+                    ).as_dict(),
+                    priority=sb.priority_for(rule["severity"]),
                 ))
 
         self._log_run_complete(project_id, len(findings))

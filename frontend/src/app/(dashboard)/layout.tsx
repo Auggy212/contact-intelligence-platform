@@ -6,12 +6,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <>
       <AuthSync />
-      <div className="flex h-screen overflow-hidden">
+      <div className="grain-overlay flex h-screen overflow-hidden">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
           <Topbar />
-          <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
-            {children}
+          <main className="app-canvas flex-1 overflow-y-auto p-6 lg:p-8">
+            <div key="page" className="animate-rise mx-auto max-w-[1400px]">
+              {children}
+            </div>
           </main>
         </div>
       </div>

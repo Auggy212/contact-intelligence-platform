@@ -84,8 +84,8 @@ async def upload_document(
                 file_id=pf.id,
                 project_id=pf.project_id,
                 organization_id=pf.organization_id,
-                clause_number=clause_data.get("clause_number"),
-                heading=clause_data.get("heading"),
+                clause_number=(clause_data.get("clause_number") or "")[:64] or None,
+                heading=(clause_data.get("heading") or "")[:500] or None,
                 body_text=clause_data["body_text"],
                 paragraph_index=clause_data["paragraph_index"],
                 char_start=clause_data["char_start"],
@@ -193,3 +193,76 @@ async def get_download_url(
     svc = DocumentService(session, storage, uuid.UUID(tenant_id), uuid.UUID(user_id))
     url = await svc.get_presigned_url(file_id)
     return {"download_url": url}
+
+
+@router.get("/{file_id}/content")
+async def get_document_content(
+    project_id: uuid.UUID,
+    file_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    user_id: str = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+    storage: StorageClient = Depends(get_storage),
+):
+    """
+    Stream the ORIGINAL uploaded file bytes, untouched, for in-browser preview.
+    Used by the Verify view so the user sees their exact uploaded document
+    (no regeneration, no modification). Streaming through the API avoids
+    MinIO/S3 CORS issues that would block a direct presigned-URL fetch.
+    """
+    from fastapi.responses import Response
+
+    svc = DocumentService(session, storage, uuid.UUID(tenant_id), uuid.UUID(user_id))
+    pf, data = await svc.download_bytes(file_id)
+    return Response(
+        content=data,
+        media_type=pf.mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'inline; filename="{pf.original_filename}"',
+            # Allow the rendered bytes to be cached briefly by the browser
+            "Cache-Control": "private, max-age=300",
+        },
+    )
+
+
+@router.get("/{file_id}/clauses")
+async def list_file_clauses(
+    project_id: uuid.UUID,
+    file_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    user_id: str = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Return all parsed clauses for a single file in one call, ordered by
+    position in the document. Used by the Verify view to map each finding's
+    clause_id to its text so it can be located and highlighted in the
+    rendered document.
+    """
+    from sqlalchemy import select
+    from app.models.clause import ParsedClause
+
+    result = await session.execute(
+        select(ParsedClause)
+        .where(
+            ParsedClause.file_id == file_id,
+            ParsedClause.project_id == project_id,
+            ParsedClause.organization_id == uuid.UUID(tenant_id),
+        )
+        .order_by(ParsedClause.paragraph_index)
+    )
+    clauses = result.scalars().all()
+    return [
+        {
+            "id": str(c.id),
+            "heading": c.heading,
+            "clause_number": c.clause_number,
+            "body_text": c.body_text,
+            "paragraph_index": c.paragraph_index,
+            "has_tracked_insertion": c.has_tracked_insertion,
+            "has_tracked_deletion": c.has_tracked_deletion,
+            "has_strikethrough": c.has_strikethrough,
+            "has_comment": c.has_comment,
+        }
+        for c in clauses
+    ]

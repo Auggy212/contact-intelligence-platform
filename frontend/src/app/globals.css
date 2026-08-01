@@ -2,29 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   ContractIQ — design system
+   Register: product (design serves the task). Calm, precise, authoritative.
+   Restrained color: neutral canvas + one authoritative accent + a disciplined
+   semantic severity scale. Color carries meaning, never decoration.
+   ============================================================================ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-    --sidebar-width: 240px;
+    /* ========================================================================
+       "THE LENS" — a contract under scrutiny.
+       Deep ink ground, elevated ink surfaces, a single electric signal-amber
+       accent (what a warning light looks like). Cinematic, not clinical.
+       Every page is token-driven, so these values theme the whole app.
+       ======================================================================== */
+
+    /* ── Ink ground + surfaces ── */
+    --background: 240 18% 6%;          /* deep ink canvas */
+    --foreground: 44 20% 92%;          /* warm parchment text */
+
+    --card: 240 16% 10%;               /* elevated surface */
+    --card-foreground: 44 20% 92%;
+
+    --popover: 240 17% 9%;
+    --popover-foreground: 44 20% 92%;
+
+    /* ── Primary = signal-amber. One bold accent, spent deliberately. ── */
+    --primary: 38 96% 56%;
+    --primary-foreground: 40 60% 8%;
+
+    --secondary: 240 12% 15%;
+    --secondary-foreground: 44 16% 84%;
+
+    --muted: 240 12% 14%;
+    --muted-foreground: 240 8% 62%;    /* dim parchment, AA on ink */
+
+    --accent: 240 12% 16%;
+    --accent-foreground: 44 16% 88%;
+
+    --destructive: 352 80% 58%;
+    --destructive-foreground: 44 30% 96%;
+
+    --border: 240 12% 18%;             /* ink hairline */
+    --input: 240 12% 20%;
+    --ring: 38 96% 56%;
+
+    --radius: 0.9rem;                  /* generous premium squircle */
+    --sidebar-width: 248px;
+
+    /* ── Semantic severity — tuned to glow on the ink ground. Note: amber is
+          the brand accent, so severity amber is reserved for MEDIUM only and
+          critical/high lean red/orange so meaning still reads at a glance. ── */
+    --sev-critical: 352 90% 62%;       /* crimson glow — highest alarm */
+    --sev-critical-bg: 352 60% 14%;
+    --sev-critical-border: 352 60% 28%;
+
+    --sev-high: 22 92% 56%;            /* hot orange */
+    --sev-high-bg: 22 70% 13%;
+    --sev-high-border: 22 65% 26%;
+
+    --sev-medium: 42 96% 56%;          /* amber-gold */
+    --sev-medium-bg: 42 70% 12%;
+    --sev-medium-border: 42 65% 24%;
+
+    --sev-low: 200 85% 60%;            /* cyan — informational */
+    --sev-low-bg: 200 60% 12%;
+    --sev-low-border: 200 55% 26%;
+
+    --sev-info: 240 8% 60%;            /* neutral */
+    --sev-info-bg: 240 12% 15%;
+    --sev-info-border: 240 12% 24%;
+
+    /* ── Success / pass / safe — mint glow ── */
+    --success: 152 62% 50%;
+    --success-bg: 152 50% 11%;
+    --success-border: 152 45% 24%;
+
+    /* ── Elevation — deep, cinematic shadows on ink + a faint amber lift on
+          the highest layer. Shadows carry the ground, never generic grey. ── */
+    --shadow-sm: 0 1px 2px 0 hsl(240 40% 2% / 0.5), 0 1px 3px 0 hsl(240 40% 2% / 0.4);
+    --shadow-md: 0 6px 16px -4px hsl(240 50% 2% / 0.6), 0 2px 6px -2px hsl(240 40% 2% / 0.4);
+    --shadow-lg: 0 24px 50px -12px hsl(240 60% 1% / 0.75), 0 8px 18px -6px hsl(240 50% 2% / 0.5);
+    --shadow-glow: 0 0 28px -6px hsl(38 96% 56% / 0.35);
+
+    /* ── Motion ── */
+    --ease-out: cubic-bezier(0.32, 0.72, 0, 1);          /* heavier, cinematic */
+    --dur-fast: 150ms;
+    --dur: 240ms;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 44% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 44% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 214 90% 62%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 217 33% 18%;
+    --input: 217 33% 20%;
+    --ring: 214 90% 62%;
   }
 }
 
@@ -34,15 +121,233 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "cv11", "ss01", "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+
+  /* Tabular figures for all numeric data (findings counts, risk scores, values).
+     Legal review is number-dense; aligned digits read as precise. */
+  th, td, .tabular, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Consistent, on-brand focus ring for keyboard users across the whole app. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.16);
+  }
+
+  /* Refined scrollbars — ink-tuned. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(240 10% 26%) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb {
+    background: hsl(240 10% 26%);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background: hsl(240 10% 34%); background-clip: content-box; }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+  .sidebar-width { width: var(--sidebar-width); }
+
+  .shadow-sm { box-shadow: var(--shadow-sm); }
+  .shadow-md { box-shadow: var(--shadow-md); }
+  .shadow-lg { box-shadow: var(--shadow-lg); }
+
+  /* ── Ambient app canvas ("The Lens") ─────────────────────────────────
+     Amber + cool radial washes glowing out of the ink ground, like light
+     leaking from a lens. Fixed so it feels like atmosphere, not a texture. */
+  .app-canvas {
+    position: relative;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(72rem 48rem at 6% -12%, hsl(38 96% 56% / 0.10), transparent 56%),
+      radial-gradient(54rem 38rem at 102% 2%, hsl(232 80% 60% / 0.10), transparent 52%),
+      radial-gradient(64rem 46rem at 50% 120%, hsl(38 90% 55% / 0.05), transparent 60%);
+    background-attachment: fixed;
   }
-  .sidebar-width {
-    width: var(--sidebar-width);
+
+  /* Film-grain overlay — breaks digital flatness. Slightly stronger on ink. */
+  .grain-overlay::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+
+  /* Frosted, elevated surface for hero panels — glass over ink with a
+     hairline top highlight (true glassmorphism per the high-end skill). */
+  .surface-glass {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  /* Amber gradient ink for hero numerals / titles. */
+  .text-gradient {
+    background-image: linear-gradient(120deg, hsl(38 96% 62%), hsl(42 100% 72%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Glowing amber accent ring for focus / active hero elements. */
+  .glow-ring { box-shadow: var(--shadow-glow); }
+
+  /* A subtle entrance for content panels — state reveal, not decoration.
+     Respects reduced motion below. */
+  .animate-rise {
+    animation: rise var(--dur) var(--ease-out) both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Slow ambient drift for decorative glows — barely perceptible. */
+  .animate-float {
+    animation: float 14s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(2%, -3%) scale(1.05); }
+  }
+
+  /* Staggered cascade entrance — heavier, cinematic (blur + rise). */
+  .animate-rise-blur {
+    animation: rise-blur 0.7s var(--ease-out) both;
+  }
+  @keyframes rise-blur {
+    from { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+    to   { opacity: 1; transform: translateY(0);    filter: blur(0);  }
+  }
+
+  /* The signature: a signal-amber scan beam sweeping a surface. */
+  .scan-line { position: relative; overflow: hidden; }
+  .scan-line::before {
+    content: "";
+    position: absolute; left: 0; right: 0; height: 40%;
+    background: linear-gradient(180deg, transparent, hsl(38 96% 56% / 0.12) 48%, hsl(38 96% 56% / 0.18) 50%, hsl(38 96% 56% / 0.12) 52%, transparent);
+    animation: scan 3.6s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+    pointer-events: none; mix-blend-mode: screen;
+  }
+  @keyframes scan {
+    0%   { top: -40%; }
+    100% { top: 100%; }
+  }
+
+  /* Amber pulse for "live / scanning" indicators. */
+  .animate-ping-amber { animation: ping-amber 1.8s cubic-bezier(0,0,0.2,1) infinite; }
+  @keyframes ping-amber {
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+  }
+}
+
+/* ============================================================================
+   Legacy light-utility compatibility layer for "The Lens" dark theme.
+   ~59 pages still use bright Tailwind pastels (bg-amber-50, bg-green-50, bg-white
+   …) authored for a light UI. Remap them to dark, tinted surfaces so they read
+   as glowing chips on the ink ground instead of blinding white patches. These
+   win via source order (utilities layer already emitted above).
+   Scoped colour text (text-*-700 etc.) is lifted to the lighter end so it stays
+   legible on the new dark fills.
+   ============================================================================ */
+@layer utilities {
+  .bg-white { background-color: hsl(var(--card)) !important; }
+
+  .bg-slate-50, .bg-slate-100 { background-color: hsl(240 12% 14%) !important; }
+  .bg-slate-200 { background-color: hsl(240 12% 18%) !important; }
+
+  /* Neutral borders → ink hairlines so card edges stay defined, not blaring. */
+  .border-slate-100, .border-slate-200, .border-slate-300,
+  .border-gray-100, .border-gray-200, .border-gray-300 { border-color: hsl(var(--border)) !important; }
+
+  /* ── Text contrast rescue ──────────────────────────────────────────────
+     Legacy code uses dark-end `text-slate-900/800/700` for PRIMARY / STRONG
+     body text (it assumed a light UI). On the ink ground those render
+     near-invisible, so force the dark end of every neutral to a LIGHT value.
+     Mid greys map to the muted parchment. This is the fix for "text I can't
+     read". */
+  .text-slate-950, .text-slate-900, .text-slate-800,
+  .text-gray-900, .text-gray-800, .text-zinc-900, .text-neutral-900 {
+    color: hsl(var(--foreground)) !important;
+  }
+  .text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600 {
+    color: hsl(44 14% 78%) !important;
+  }
+  .text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400 {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+  .text-slate-300 { color: hsl(240 8% 52%) !important; }
+
+  /* Coloured texts authored for light chips (-500 → -900) — lift the WHOLE
+     range to the bright, legible tone of their own hue so they glow on the
+     ink ground instead of sinking into it. */
+  .text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900,
+  .text-orange-500, .text-orange-600, .text-orange-700 { color: hsl(var(--sev-medium)) !important; }
+  .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
+  .text-indigo-500, .text-indigo-600, .text-indigo-700 { color: hsl(var(--sev-low)) !important; }
+  .text-green-500, .text-green-600, .text-green-700, .text-green-800, .text-green-900,
+  .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900 { color: hsl(var(--success)) !important; }
+  .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900,
+  .text-rose-500, .text-rose-600, .text-rose-700 { color: hsl(var(--sev-critical)) !important; }
+  .text-violet-500, .text-violet-600, .text-violet-700,
+  .text-purple-500, .text-purple-600, .text-purple-700 { color: hsl(262 70% 72%) !important; }
+
+  .bg-amber-50, .bg-amber-100 { background-color: hsl(var(--sev-medium-bg)) !important; }
+  .border-amber-200, .border-amber-300 { border-color: hsl(var(--sev-medium-border)) !important; }
+  .text-amber-800, .text-amber-700, .text-amber-600 { color: hsl(var(--sev-medium)) !important; }
+
+  .bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-100 { background-color: hsl(var(--success-bg)) !important; }
+  .border-green-200, .border-green-300, .border-emerald-200 { border-color: hsl(var(--success-border)) !important; }
+  .text-green-800, .text-green-700, .text-green-600, .text-emerald-700, .text-emerald-600 { color: hsl(var(--success)) !important; }
+
+  .bg-red-50, .bg-red-100 { background-color: hsl(var(--sev-critical-bg)) !important; }
+  .border-red-200, .border-red-300 { border-color: hsl(var(--sev-critical-border)) !important; }
+  .text-red-800, .text-red-700, .text-red-600 { color: hsl(var(--sev-critical)) !important; }
+
+  .bg-blue-50, .bg-blue-100 { background-color: hsl(var(--sev-low-bg)) !important; }
+  .border-blue-200, .border-blue-300 { border-color: hsl(var(--sev-low-border)) !important; }
+  .text-blue-800, .text-blue-700, .text-blue-600, .text-blue-900 { color: hsl(var(--sev-low)) !important; }
+}
+
+/* ── Verify: the uploaded document must render as REAL white paper with dark
+   ink, immune to the dark theme + compat layer, so it stays fully legible and
+   looks like a genuine printed contract. High specificity beats the layer. ── */
+.verify-docx-container .docx-wrapper { background: transparent !important; padding: 0 !important; }
+.verify-docx-container .docx {
+  margin-inline: auto !important;
+  margin-bottom: 1rem !important;
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.6) !important;
+}
+.verify-docx-container .docx * { color: #1a1a1a !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-rise, .animate-rise-blur, .animate-float,
+  .animate-ping-amber { animation: none; }
+  .scan-line::before { animation: none; display: none; }
 }

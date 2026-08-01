@@ -21,14 +21,20 @@ logger = get_logger(__name__)
     default_retry_delay=60,
 )
 def run_agent_task(self, task_id: str, tenant_id: str) -> dict:
+    # Fresh loop per task — required on Windows --pool=solo so the connection
+    # pool does not reference a closed loop from the previous task.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        return asyncio.run(_run_agent_async(task_id, tenant_id))
+        return loop.run_until_complete(_run_agent_async(task_id, tenant_id))
     except Exception as exc:
         raise self.retry(exc=exc)
+    finally:
+        loop.close()
 
 
 async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
-    from app.core.database import get_db
+    from app.core.database import AsyncSessionLocal
     from app.models.task import AnalysisTask, TaskResult
     from app.models.clause import ParsedClause, ClauseFlag
     from app.agents import (
@@ -37,34 +43,37 @@ async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
         LawValidatorAgent,
         ChecklistValidatorAgent,
     )
-    from sqlalchemy import select
+    from sqlalchemy import select, text
 
-    async for session in get_db(tenant_id):
-        # Load the task (RLS-scoped to tenant)
-        result = await session.execute(
-            select(AnalysisTask).where(
-                AnalysisTask.id == uuid.UUID(task_id),
-                AnalysisTask.organization_id == uuid.UUID(tenant_id),
-            )
-        )
-        task = result.scalar_one_or_none()
-        if not task:
-            logger.error("agent_task_not_found", task_id=task_id)
-            return {"error": "task_not_found"}
-
-        task.status = TaskStatus.RUNNING
-        task.celery_task_id = str(uuid.uuid4())  # placeholder — real ID set below
-        await session.flush()
-
+    # Explicit session — no generator, no finally-block dependency.
+    # This guarantees commit/rollback happens inside the same event loop
+    # that created the connection, which is the only reliable pattern on
+    # Windows Celery --pool=solo with asyncpg.
+    async with AsyncSessionLocal() as session:
         try:
-            # Load all parsed clauses for this project
+            await session.execute(text(f"SET LOCAL app.tenant_id = '{tenant_id}'"))
+
+            result = await session.execute(
+                select(AnalysisTask).where(
+                    AnalysisTask.id == uuid.UUID(task_id),
+                    AnalysisTask.organization_id == uuid.UUID(tenant_id),
+                )
+            )
+            task = result.scalar_one_or_none()
+            if not task:
+                logger.error("agent_task_not_found", task_id=task_id)
+                return {"error": "task_not_found"}
+
+            task.status = TaskStatus.RUNNING
+            task.celery_task_id = str(uuid.uuid4())
+            await session.flush()
+
             clauses_result = await session.execute(
                 select(ParsedClause).where(ParsedClause.project_id == task.project_id)
             )
             all_clauses = clauses_result.scalars().all()
 
             def clauses_for_file(file_id: str) -> list[dict]:
-                """Return clause dicts for a specific file_id."""
                 return [
                     {
                         "id": str(c.id),
@@ -85,27 +94,19 @@ async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
                 ]
 
             file_ids = task.input_file_ids or []
-            context = {
-                "project_id": str(task.project_id),
-                "tenant_id": tenant_id,
-            }
+            context = {"project_id": str(task.project_id), "tenant_id": tenant_id}
 
             if task.task_type == TaskType.TEMPLATE_COMPARISON:
-                # file_ids[0] = template A, file_ids[1] = proposed draft B
                 context["clauses_a"] = clauses_for_file(file_ids[0]) if len(file_ids) > 0 else []
                 context["clauses_b"] = clauses_for_file(file_ids[1]) if len(file_ids) > 1 else []
                 agent = TemplateComparisonAgent()
-
             elif task.task_type == TaskType.VENDOR_DIFF:
-                # file_ids[0] = proposed draft B, file_ids[1] = vendor reply C
                 context["clauses_b"] = clauses_for_file(file_ids[0]) if len(file_ids) > 0 else []
                 context["clauses_c"] = clauses_for_file(file_ids[1]) if len(file_ids) > 1 else []
                 agent = VendorDiffAgent()
-
             elif task.task_type == TaskType.LAW_VALIDATION:
                 context["clauses"] = clauses_for_file(file_ids[0]) if file_ids else []
                 agent = LawValidatorAgent()
-
             elif task.task_type == TaskType.CHECKLIST_VALIDATION:
                 from app.models.checklist import ChecklistRule
                 rules_result = await session.execute(
@@ -124,27 +125,21 @@ async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
                     for r in rules_result.scalars().all()
                 ]
                 target_clauses = clauses_for_file(file_ids[0]) if file_ids else []
-                full_text = "\n\n".join(c["body_text"] for c in target_clauses)
-                context["full_text"] = full_text
+                context["full_text"] = "\n\n".join(c["body_text"] for c in target_clauses)
                 context["rules"] = rules
                 agent = ChecklistValidatorAgent()
-
             else:
                 raise ValueError(f"Unknown task type: {task.task_type}")
 
             result_data = await agent.run(context)
 
-            # Build a map of clause IDs that actually exist in this project
             valid_clause_ids = {str(c.id) for c in all_clauses}
 
-            # Persist findings as ClauseFlag rows
             for finding in result_data.get("findings", []):
                 source_id = finding.get("source_clause_id")
-                # Only persist if source_clause_id is a real, loaded clause
                 if source_id and source_id in valid_clause_ids:
                     clause_uuid = uuid.UUID(source_id)
                 elif all_clauses:
-                    # Use first clause of target file as a safe fallback reference
                     target_file_id = file_ids[0] if file_ids else None
                     fallback = next(
                         (c for c in all_clauses if str(c.file_id) == target_file_id),
@@ -152,7 +147,16 @@ async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
                     )
                     clause_uuid = fallback.id
                 else:
-                    continue  # No clauses at all — skip this finding
+                    continue
+
+                raw_vc = finding.get("value_changes") or []
+                # Pass as a plain Python list so SQLAlchemy/JSONB stores it natively.
+                # Never json.dumps() here — that creates a string, which breaks the
+                # findings API Pydantic response serialisation.
+                vc_list = [
+                    v.__dict__ if hasattr(v, "__dict__") else v
+                    for v in raw_vc
+                ] if raw_vc else None
 
                 flag = ClauseFlag(
                     clause_id=clause_uuid,
@@ -172,46 +176,67 @@ async def _run_agent_async(task_id: str, tenant_id: str) -> dict:
                     law_section_number=finding.get("law_section_number"),
                     law_retrieved_text=finding.get("law_retrieved_text"),
                     law_jurisdiction=finding.get("law_jurisdiction"),
+                    clause_type=finding.get("clause_type"),
+                    value_changes=vc_list,
+                    suggestion=finding.get("suggestion"),
+                    priority=finding.get("priority"),
                 )
                 session.add(flag)
 
-            # Persist task result
-            tr = TaskResult(
-                task_id=task.id,
-                organization_id=uuid.UUID(tenant_id),
-                raw_output=result_data,
-                token_usage=result_data.get("token_usage"),
+            # Idempotent task result — skip if already exists (safe on retry)
+            existing = await session.execute(
+                select(TaskResult).where(TaskResult.task_id == task.id)
             )
-            session.add(tr)
+            if existing.scalar_one_or_none() is None:
+                session.add(TaskResult(
+                    task_id=task.id,
+                    organization_id=uuid.UUID(tenant_id),
+                    raw_output=result_data,
+                    token_usage=result_data.get("token_usage"),
+                ))
 
             task.status = TaskStatus.COMPLETED
             task.model_version = result_data.get("model_version")
             task.prompt_version = result_data.get("prompt_version")
-            await session.flush()
 
-            # Increment usage counters: 1 contract processed + AI tokens consumed
-            from app.services.billing_service import BillingService
-            from app.core.database import get_db_no_rls
-            token_usage = result_data.get("token_usage", {}) or {}
-            total_tokens = (
-                token_usage.get("input_tokens", 0) + token_usage.get("output_tokens", 0)
-            )
-            async for billing_session in get_db_no_rls():
-                billing = BillingService(billing_session)
-                await billing.increment_usage(
-                    uuid.UUID(tenant_id),
-                    contracts=1,
-                    ai_tokens=total_tokens,
+            # Single explicit commit — everything above saved atomically
+            await session.commit()
+
+            # Billing increment in a separate session — failure must not block findings
+            try:
+                from app.services.billing_service import BillingService
+                token_usage = result_data.get("token_usage", {}) or {}
+                total_tokens = (
+                    token_usage.get("input_tokens", 0) + token_usage.get("output_tokens", 0)
                 )
-                await billing_session.commit()
+                async with AsyncSessionLocal() as billing_session:
+                    billing = BillingService(billing_session)
+                    await billing.increment_usage(
+                        uuid.UUID(tenant_id), contracts=1, ai_tokens=total_tokens
+                    )
+                    await billing_session.commit()
+            except Exception as billing_exc:
+                logger.warning("billing_increment_failed", error=str(billing_exc))
 
             findings_count = len(result_data.get("findings", []))
             logger.info("agent_task_complete", task_id=task_id, findings=findings_count)
             return {"task_id": task_id, "findings": findings_count}
 
         except Exception as exc:
-            task.status = TaskStatus.FAILED
-            task.error_message = str(exc)[:1024]
-            await session.flush()
+            await session.rollback()
+            try:
+                # Best-effort: mark task failed in a fresh mini-session
+                async with AsyncSessionLocal() as err_session:
+                    await err_session.execute(text(f"SET LOCAL app.tenant_id = '{tenant_id}'"))
+                    err_result = await err_session.execute(
+                        select(AnalysisTask).where(AnalysisTask.id == uuid.UUID(task_id))
+                    )
+                    err_task = err_result.scalar_one_or_none()
+                    if err_task:
+                        err_task.status = TaskStatus.FAILED
+                        err_task.error_message = str(exc)[:1024]
+                        await err_session.commit()
+            except Exception:
+                pass
             logger.error("agent_task_failed", task_id=task_id, error=str(exc))
             raise

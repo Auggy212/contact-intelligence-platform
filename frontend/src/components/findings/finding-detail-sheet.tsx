@@ -7,11 +7,16 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 import { SeverityBadge } from "./severity-badge"
-import { useReviewFinding } from "@/lib/hooks/use-tasks"
+import { useReviewFinding, useClause } from "@/lib/hooks/use-tasks"
 import type { ClauseFlag } from "@/lib/types/api"
-import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp, Info } from "lucide-react"
+import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp, Info, Library, FileText, Wrench, ArrowRight, Pencil, AlertTriangle, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { libraryApi } from "@/lib/api/library"
+import { PRIORITY_CONFIG } from "@/lib/types/api"
+import { explainFinding } from "@/lib/finding-explain"
 
 interface FindingDetailSheetProps {
   finding: ClauseFlag | null
@@ -21,21 +26,34 @@ interface FindingDetailSheetProps {
 }
 
 const flagTypeLabels: Record<string, string> = {
+  template_deviation: "Template Deviation",
+  clause_added: "Clause Added",
+  clause_missing: "Clause Missing",
+  vendor_redline: "Vendor Redline",
+  law_violation: "Law Violation",
+  law_at_risk: "Law Risk",
+  checklist_violation: "Checklist Fail",
+  checklist_fail: "Checklist Fail",
+  checklist_not_found: "Not Found",
   missing_clause: "Missing Clause",
   weakened_clause: "Weakened Clause",
   modified: "Modified",
   deleted: "Deleted",
   added: "Added",
-  law_violation: "Law Violation",
-  law_at_risk: "Law Risk",
-  checklist_fail: "Checklist Fail",
-  checklist_not_found: "Checklist Not Found",
 }
 
 export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: FindingDetailSheetProps) {
   const [note, setNote] = useState("")
   const [showReasoning, setShowReasoning] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
+  const [addingToLibrary, setAddingToLibrary] = useState(false)
   const { mutate: review, isPending } = useReviewFinding(projectId)
+
+  // Fetch the actual clause text the flag is pinned to
+  const { data: clause, isLoading: clauseLoading } = useClause(
+    projectId,
+    finding?.clause_id ?? null,
+  )
 
   function handleReview(status: "approved" | "rejected") {
     if (!finding) return
@@ -44,9 +62,36 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
     })
   }
 
+  async function handleAddToLibrary() {
+    if (!finding || !clause) return
+    setAddingToLibrary(true)
+    try {
+      await libraryApi.create({
+        title: finding.title,
+        body_text: clause.body_text,
+        category: finding.flag_type,
+        status: "approved",
+      })
+      toast.success("Added to Clause Library", {
+        description: "The clause text is now saved in your organisation's library.",
+      })
+    } catch {
+      toast.error("Failed to add to library", {
+        description: "Clause library indexing is unavailable in demo mode.",
+      })
+    } finally {
+      setAddingToLibrary(false)
+    }
+  }
+
   if (!finding) return null
 
   const isReviewed = finding.reviewer_status !== "pending"
+
+  const hasChangeMarkup =
+    clause &&
+    (clause.has_tracked_insertion || clause.has_tracked_deletion ||
+      clause.has_strikethrough || clause.has_comment)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -55,7 +100,7 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
           <div className="flex items-center gap-2 mb-2">
             <SeverityBadge severity={finding.severity} />
             <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-              {flagTypeLabels[finding.flag_type] ?? finding.flag_type}
+              {flagTypeLabels[finding.flag_type] ?? finding.flag_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
             </span>
           </div>
           <SheetTitle className="text-lg leading-snug">{finding.title}</SheetTitle>
@@ -78,17 +123,149 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
         </SheetHeader>
 
         <div className="space-y-5">
-          {/* Description */}
-          <div>
-            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Description</h4>
-            <p className="text-sm text-slate-700 leading-relaxed">{finding.description}</p>
+
+          {/* ── In plain English: What changed / Why it matters / What to do ── */}
+          {(() => {
+            const ex = explainFinding(finding)
+            return (
+              <div className="rounded-xl border border-border bg-secondary/40 p-4 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sev-medium-bg text-sev-medium">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">What changed</p>
+                    <p className="mt-0.5 text-sm font-medium leading-snug text-foreground">{ex.whatChanged}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sev-critical-bg text-sev-critical">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">Why it matters</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-foreground/90">{ex.whyItMatters}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-success-bg text-success">
+                    <Target className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.05em] text-muted-foreground">What to do</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-foreground/90">{ex.whatToDo}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Clause Text ── */}
+          <div className="rounded-lg border border-slate-200 overflow-hidden">
+            <div className="flex items-center gap-2 bg-slate-50 border-b border-slate-200 px-4 py-2.5">
+              <FileText className="w-3.5 h-3.5 text-slate-500" />
+              <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                {clause?.heading ? `Clause: ${clause.heading}` : "Flagged Clause Text"}
+              </h4>
+              {clause?.clause_number && (
+                <span className="ml-auto text-xs text-slate-400">§{clause.clause_number}</span>
+              )}
+            </div>
+            <div className="p-4">
+              {clauseLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                  <Skeleton className="h-3 w-4/6" />
+                </div>
+              ) : clause ? (
+                <>
+                  <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                    {clause.body_text}
+                  </p>
+                  {hasChangeMarkup && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {clause.has_tracked_insertion && (
+                        <span className="text-xs bg-green-100 text-green-700 border border-green-200 rounded px-2 py-0.5">+ Tracked insertion</span>
+                      )}
+                      {clause.has_tracked_deletion && (
+                        <span className="text-xs bg-red-100 text-red-700 border border-red-200 rounded px-2 py-0.5">− Tracked deletion</span>
+                      )}
+                      {clause.has_strikethrough && (
+                        <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 rounded px-2 py-0.5">Strikethrough text</span>
+                      )}
+                      {clause.has_comment && (
+                        <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 rounded px-2 py-0.5">Has comment</span>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-400 italic">Clause text not available.</p>
+              )}
+            </div>
           </div>
 
-          {/* Recommendation */}
-          {finding.recommendation && (
+          {/* ── Suggested Fix (deterministic modification suggestion) ── */}
+          {finding.suggestion && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 overflow-hidden">
+              <div className="flex items-center gap-2 bg-emerald-100/60 border-b border-emerald-200 px-4 py-2.5">
+                <Wrench className="w-3.5 h-3.5 text-emerald-700" />
+                <h4 className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                  Suggested Fix
+                </h4>
+                {finding.priority && (
+                  <span className={cn(
+                    "ml-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                    PRIORITY_CONFIG[finding.priority].bg,
+                    PRIORITY_CONFIG[finding.priority].color,
+                    PRIORITY_CONFIG[finding.priority].border,
+                  )}>
+                    <span className={cn("w-1.5 h-1.5 rounded-full", PRIORITY_CONFIG[finding.priority].dot)} />
+                    {PRIORITY_CONFIG[finding.priority].label}
+                  </span>
+                )}
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-start gap-2 text-sm">
+                  <span className="shrink-0 text-xs font-medium text-slate-500 uppercase tracking-wide pt-0.5 w-16">Current</span>
+                  <span className="text-slate-700 line-through decoration-red-400/70">{finding.suggestion.original_text}</span>
+                </div>
+                <div className="flex items-start gap-2 text-sm">
+                  <span className="shrink-0 text-xs font-medium text-emerald-600 uppercase tracking-wide pt-0.5 w-16 flex items-center gap-1">
+                    <ArrowRight className="w-3 h-3" /> Fix
+                  </span>
+                  <span className="text-emerald-900 font-medium">{finding.suggestion.suggested_text}</span>
+                </div>
+                <div className="pt-2 border-t border-emerald-200/70">
+                  <p className="text-xs text-emerald-800/90 leading-relaxed">
+                    <span className="font-semibold">Why: </span>{finding.suggestion.reason}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Technical detail (collapsible) — raw engine output for analysts */}
+          {finding.description && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Recommendation</h4>
-              <p className="text-sm text-slate-700 leading-relaxed">{finding.recommendation}</p>
+              <button
+                onClick={() => setShowDetail((v) => !v)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+              >
+                {showDetail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                Technical detail
+              </button>
+              {showDetail && (
+                <div className="mt-2 space-y-2 rounded-lg border border-border bg-secondary/30 p-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed">{finding.description}</p>
+                  {finding.recommendation && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-semibold text-foreground/70">Recommendation: </span>{finding.recommendation}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -129,6 +306,25 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
                   {finding.reasoning_trace}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Add to Clause Library */}
+          {clause && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <div className="flex items-center gap-2">
+                <Library className="w-4 h-4 text-slate-400" />
+                <span className="text-xs text-slate-600">Save this clause text to your organisation&apos;s Clause Library</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddToLibrary}
+                disabled={addingToLibrary}
+                className="shrink-0 text-xs h-7"
+              >
+                {addingToLibrary ? "Saving…" : "Add to Library"}
+              </Button>
             </div>
           )}
 

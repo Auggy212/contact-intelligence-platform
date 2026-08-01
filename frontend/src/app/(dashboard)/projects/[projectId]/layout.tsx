@@ -7,7 +7,7 @@ import { useProject } from "@/lib/hooks/use-projects"
 import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, FolderOpen, Upload, BarChart2, Flag, Download, Pencil, Trash2 } from "lucide-react"
+import { ChevronRight, FolderOpen, Upload, BarChart2, Flag, Download, Pencil, Trash2, ShieldCheck, Wrench } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -16,6 +16,8 @@ const tabs = [
   { label: "Upload", href: "/upload", icon: Upload },
   { label: "Analysis", href: "/analysis", icon: BarChart2 },
   { label: "Findings", href: "/findings", icon: Flag },
+  { label: "Fixes", href: "/modifications", icon: Wrench },
+  { label: "Verify", href: "/verify", icon: ShieldCheck },
   { label: "Export", href: "/export", icon: Download },
 ]
 
@@ -32,20 +34,20 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-4">
-        <Link href="/projects" className="hover:text-slate-900 transition-colors">Projects</Link>
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+        <Link href="/projects" className="hover:text-foreground transition-colors">Projects</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         {isLoading ? (
           <Skeleton className="h-4 w-32" />
         ) : (
-          <span className="text-slate-900 font-medium truncate max-w-xs">{project?.name}</span>
+          <span className="text-foreground font-medium truncate max-w-xs">{project?.name}</span>
         )}
       </div>
 
       {/* Project name + actions */}
       {!isLoading && project && (
         <div className="flex items-center justify-between mb-5 gap-3">
-          <h1 className="text-xl font-bold text-slate-900 truncate">{project.name}</h1>
+          <h1 className="text-2xl font-bold tracking-[-0.02em] text-foreground truncate">{project.name}</h1>
           <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
@@ -70,7 +72,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       )}
 
       {/* Tab nav */}
-      <div className="flex gap-1 border-b mb-6 -mx-0">
+      <div className="mb-6 flex gap-0.5 overflow-x-auto border-b border-border">
         {tabs.map((tab) => {
           const href = base + tab.href
           const isActive = tab.href === ""
@@ -80,14 +82,15 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
             <Link
               key={tab.href}
               href={href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                "-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors duration-150 ease-out-quint",
                 isActive
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground/70")} strokeWidth={2} />
               {tab.label}
             </Link>
           )

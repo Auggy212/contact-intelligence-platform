@@ -1,0 +1,170 @@
+{
+  "_comment": "Priority 4: Example outputs for semantic concept detection findings (all 38 concepts). Concepts are clause-meaning-based, not wording-similarity-based.",
+
+  "examples": [
+
+    {
+      "scenario": "IP ownership reversed (Critical — concept 1)",
+      "flag_type": "template_deviation",
+      "severity": "critical",
+      "risk_score": 10,
+      "title": "[Semantic] IP ownership reversed — deviated from template",
+      "description": "Concept-level analysis: 'IP ownership reversed' violation detected. This finding is based on the legal meaning of the clause, not wording similarity. Clause excerpt: \"All intellectual property rights in and to the deliverables shall remain the exclusive property of the Vendor...\"",
+      "recommendation": "IP must vest in the Client upon full payment. Vendor retaining IP means the client pays for deliverables it does not own.",
+      "confidence": 0.59,
+      "reasoning_trace": "semantic_concept='IP ownership reversed'; action='deviated from template'; clause='INTELLECTUAL PROPERTY'"
+    },
+
+    {
+      "scenario": "Liability cap removed or unlimited (Critical — concept 2)",
+      "flag_type": "template_deviation",
+      "severity": "critical",
+      "risk_score": 10,
+      "title": "[Semantic] Liability cap removed or unlimited — deviated from template",
+      "description": "Concept-level analysis: 'Liability cap removed or unlimited' violation detected. Clause excerpt: \"The liability of the Vendor under this Agreement shall be unlimited...\"",
+      "recommendation": "Liability must be capped. Unlimited liability exposes the vendor to catastrophic financial risk.",
+      "confidence": 0.59
+    },
+
+    {
+      "scenario": "Indemnification reversed (Critical — concept 3)",
+      "flag_type": "template_deviation",
+      "severity": "critical",
+      "risk_score": 10,
+      "title": "[Semantic] Indemnification reversed — deviated from template",
+      "description": "Concept-level analysis: 'Indemnification reversed' violation detected. Clause excerpt: \"The Client shall fully indemnify and hold harmless the Vendor...\"",
+      "recommendation": "Indemnification direction is reversed. Client should NOT be indemnifying the vendor for vendor-related claims.",
+      "confidence": 0.59
+    },
+
+    {
+      "scenario": "Jurisdiction changed (High — concept 4)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Jurisdiction changed — deviated from template",
+      "description": "Concept-level analysis: 'Jurisdiction changed' violation detected. Clause excerpt: \"The courts at New Delhi shall have exclusive jurisdiction over any dispute arising under this Agreement.\"",
+      "recommendation": "Jurisdiction moved away from Mumbai. Affects where disputes are litigated; must be approved by legal."
+    },
+
+    {
+      "scenario": "Payment terms extended beyond MSME limit (High — concept 8)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 8,
+      "title": "[Semantic] Payment terms extended beyond MSME limit — deviated from template",
+      "description": "Concept-level analysis: 'Payment terms extended beyond MSME limit' violation detected. Clause excerpt: \"The Client shall pay within ninety (90) days of receipt of a valid GST invoice.\"",
+      "recommendation": "Payment terms exceed 30 days and may violate the MSME Act's 45-day limit for MSME vendors."
+    },
+
+    {
+      "scenario": "Auto-renewal clause inserted (Medium — concept 9)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 6,
+      "title": "[Semantic] Auto-renewal clause inserted — inserted (not in template)",
+      "description": "Concept-level analysis: 'Auto-renewal clause inserted' violation detected. Clause excerpt: \"This Agreement will automatically renew for successive one-year terms unless either party provides written notice of termination...\"",
+      "recommendation": "Auto-renewal not in template. Creates lock-in risk if opt-out window is missed."
+    },
+
+    {
+      "scenario": "Non-compete clause inserted (High — concept 11)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Non-compete clause inserted — inserted (not in template)",
+      "description": "Concept-level analysis: 'Non-compete clause inserted' violation detected. Clause excerpt: \"The Client shall not carry on any business competing with the Vendor's core business for twenty-four months after termination.\"",
+      "recommendation": "Non-compete clause not present in template. Verify enforceability under ICA Section 27 (restraint of trade is void)."
+    },
+
+    {
+      "scenario": "Warranty period weakened or removed (High — concept 18)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Warranty period weakened or removed — deviated from template",
+      "description": "Concept-level analysis: 'Warranty period weakened or removed' violation detected. Clause excerpt: \"The deliverables are provided 'as is' without any express or implied warranty of any kind.\"",
+      "recommendation": "Warranty removed or weakened. Vendor should warrant deliverables are defect-free for at least 90 days."
+    },
+
+    {
+      "scenario": "Data protection weakened (High — concept 20)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Data protection weakened — deviated from template",
+      "description": "Concept-level analysis: 'Data protection weakened' violation detected. Clause excerpt: \"The parties shall use reasonable security measures under the IT Act 2008.\"",
+      "recommendation": "DPDP Act 2023 reference missing. Data processing clauses must reference current Indian data protection law."
+    },
+
+    {
+      "scenario": "Governing law changed from India (High — concept 22)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 8,
+      "title": "[Semantic] Governing law changed from India — deviated from template",
+      "description": "Concept-level analysis: 'Governing law changed from India' violation detected. Clause excerpt: \"This Agreement shall be governed by the laws of England and Wales.\"",
+      "recommendation": "Governing law changed away from India. Enforcing the contract under foreign law adds significant cost and complexity."
+    },
+
+    {
+      "scenario": "Renewal terms changed to automatic (Medium — concept 31, new)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 6,
+      "title": "[Semantic] Renewal terms changed to automatic — deviated from template",
+      "description": "Concept-level analysis: 'Renewal terms changed to automatic' violation detected. Clause excerpt: \"This Agreement shall renew automatically without further notice unless either party notifies the other.\"",
+      "recommendation": "Renewal clause changed from opt-in to automatic without notice. Negotiate an explicit opt-out window."
+    },
+
+    {
+      "scenario": "SLA service credits too low or uncapped (Medium — concept 32, new)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Semantic] SLA service credits too low or uncapped — deviated from template",
+      "description": "Concept-level analysis: 'SLA service credits too low or uncapped' violation detected. Clause excerpt: \"Service credits of 1% of the monthly fee shall be the Client's sole and exclusive remedy for SLA failures.\"",
+      "recommendation": "Service credit cap is very low or credits are stated as the sole remedy. Negotiate meaningful credit percentages and preserve right to terminate for persistent failure."
+    },
+
+    {
+      "scenario": "Non-compete period unreasonably long (High — concept 34, new)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Non-compete period unreasonably long — inserted (not in template)",
+      "description": "Concept-level analysis: 'Non-compete period unreasonably long' violation detected. Clause excerpt: \"The Client shall not carry on any competing business for a period of four (4) years from the date of termination.\"",
+      "recommendation": "Non-compete duration exceeds reasonable limits. Periods beyond 12–24 months are likely void under ICA Section 27."
+    },
+
+    {
+      "scenario": "Data retention obligation conflicts with DPDP Act (High — concept 36, new)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Data retention obligation conflicts with DPDP Act — inserted (not in template)",
+      "description": "Concept-level analysis: 'Data retention obligation conflicts with DPDP Act' violation detected. Clause excerpt: \"The Vendor may retain personal data at its sole discretion for as long as it deems necessary.\"",
+      "recommendation": "Retention obligation is indefinite or at vendor's discretion. DPDP Act 2023 requires a defined retention period with deletion obligations."
+    },
+
+    {
+      "scenario": "Insurance coverage inadequate or removed (Medium — concept 37, new)",
+      "flag_type": "template_deviation",
+      "severity": "medium",
+      "risk_score": 5,
+      "title": "[Semantic] Insurance coverage inadequate or removed — deviated from template",
+      "description": "Concept-level analysis: 'Insurance coverage inadequate or removed' violation detected. Clause excerpt: \"Insurance is at the vendor's own discretion and no minimum coverage is required.\"",
+      "recommendation": "Insurance requirement removed or made optional. Minimum professional indemnity and general liability cover should be mandatory."
+    },
+
+    {
+      "scenario": "Exclusivity prevents multi-vendor strategy (High — concept 38, new)",
+      "flag_type": "template_deviation",
+      "severity": "high",
+      "risk_score": 7,
+      "title": "[Semantic] Exclusivity prevents multi-vendor strategy — inserted (not in template)",
+      "description": "Concept-level analysis: 'Exclusivity prevents multi-vendor strategy' violation detected. Clause excerpt: \"During the Exclusivity Period, the Client shall not engage any competing vendor for services substantially similar to those provided hereunder.\"",
+      "recommendation": "Exclusivity clause prevents engaging competing vendors. This creates lock-in and eliminates leverage. Ensure adequate compensation or remove."
+    }
+  ]
+}

@@ -5,21 +5,39 @@ import Link from "next/link"
 import { useProject } from "@/lib/hooks/use-projects"
 import { useDocuments } from "@/lib/hooks/use-documents"
 import { useFindings } from "@/lib/hooks/use-tasks"
+import { dedupeFindings } from "@/lib/findings-dedup"
+import { useProjectAudit } from "@/lib/hooks/use-audit"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ProjectStatusBadge } from "@/components/projects/project-status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDate, formatBytes } from "@/lib/utils"
+import { formatDate, formatBytes, formatRelative } from "@/lib/utils"
 import { FILE_ROLE_LABELS, SEVERITY_CONFIG } from "@/lib/types/api"
-import { Upload, Flag, FileText, AlertTriangle } from "lucide-react"
+import {
+  Upload, Flag, FileText, AlertTriangle, Shield,
+  UploadCloud, BarChart2, CheckCircle2, XCircle, RefreshCw, Gavel,
+} from "lucide-react"
+
+const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  "document.upload":    { label: "Document uploaded",      icon: UploadCloud,   color: "text-blue-500" },
+  "document.delete":    { label: "Document removed",       icon: XCircle,       color: "text-red-500" },
+  "task.create":        { label: "Analysis started",       icon: BarChart2,     color: "text-violet-500" },
+  "finding.approved":   { label: "Finding approved",       icon: CheckCircle2,  color: "text-green-500" },
+  "finding.rejected":   { label: "Finding rejected",       icon: XCircle,       color: "text-red-500" },
+  "project.update":     { label: "Project edited",         icon: RefreshCw,     color: "text-amber-500" },
+  "project.delete":     { label: "Project deleted",        icon: XCircle,       color: "text-red-500" },
+}
 
 export default function ProjectOverviewPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const { data: project, isLoading: loadingProject } = useProject(projectId)
   const { data: documents } = useDocuments(projectId)
   const { data: findings } = useFindings(projectId)
+  const { data: auditEvents } = useProjectAudit(projectId, 6)
 
-  const severityCounts = (findings ?? []).reduce((acc, f) => {
+  // Count DISTINCT issues (deduped), so Overview agrees with the Findings tab.
+  const issues = findings ? dedupeFindings(findings).map((i) => i.primary) : []
+  const severityCounts = issues.reduce((acc, f) => {
     acc[f.severity] = (acc[f.severity] ?? 0) + 1
     return acc
   }, {} as Record<string, number>)
@@ -38,8 +56,8 @@ export default function ProjectOverviewPage() {
   if (!project) return null
 
   const criticalCount = severityCounts["critical"] ?? 0
-  const totalFindings = findings?.length ?? 0
-  const pendingReview = (findings ?? []).filter((f) => f.reviewer_status === "pending").length
+  const totalFindings = issues.length
+  const pendingReview = issues.filter((f) => f.reviewer_status === "pending").length
 
   return (
     <div className="space-y-6">
@@ -81,7 +99,7 @@ export default function ProjectOverviewPage() {
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wide">Total Findings</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Issues</p>
             <p className="text-3xl font-bold text-slate-900 mt-1">{totalFindings}</p>
           </CardContent>
         </Card>
@@ -151,6 +169,56 @@ export default function ProjectOverviewPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Project Activity */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-slate-400" />
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+            </div>
+            <Link href="/audit" className="text-xs text-blue-600 hover:underline">
+              Full audit log →
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {!auditEvents || auditEvents.length === 0 ? (
+            <p className="text-sm text-slate-400 py-3 text-center">No activity recorded yet for this project.</p>
+          ) : (
+            <div className="space-y-0">
+              {auditEvents.map((event, i) => {
+                const cfg = ACTION_CONFIG[event.action]
+                const Icon = cfg?.icon ?? Gavel
+                const label = cfg?.label ?? event.action.replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                const color = cfg?.color ?? "text-slate-400"
+                const meta = event.extra_data as Record<string, string> | null
+                const detail =
+                  meta?.filename ?? meta?.task_type ?? meta?.flag_type ?? meta?.project_name ?? null
+
+                return (
+                  <div
+                    key={event.id}
+                    className={`flex items-start gap-3 py-3 ${i < auditEvents.length - 1 ? "border-b border-slate-100" : ""}`}
+                  >
+                    <div className={`mt-0.5 ${color}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-800 font-medium">{label}</p>
+                      {detail && (
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{detail}</p>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400 shrink-0">{formatRelative(event.created_at)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

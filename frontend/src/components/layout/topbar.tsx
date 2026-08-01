@@ -10,10 +10,10 @@ import { useSubscription } from "@/lib/hooks/use-billing"
 import { getSession, clearSession, type MockUser } from "@/lib/auth"
 
 const planBadgeClass: Record<string, string> = {
-  trial: "bg-slate-100 text-slate-700 border-slate-300",
-  starter: "bg-blue-100 text-blue-700 border-blue-300",
-  professional: "bg-purple-100 text-purple-700 border-purple-300",
-  enterprise: "bg-amber-100 text-amber-700 border-amber-300",
+  trial: "bg-secondary text-secondary-foreground border-border",
+  starter: "bg-sev-low-bg text-sev-low border-sev-low-border",
+  professional: "bg-sev-critical-bg text-sev-critical border-sev-critical-border",
+  enterprise: "bg-sev-medium-bg text-sev-medium border-sev-medium-border",
 }
 
 export function Topbar() {
@@ -43,11 +43,11 @@ export function Topbar() {
         </div>
       )}
 
-      <header className="h-14 border-b bg-white flex items-center justify-between px-6 gap-4">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border/70 bg-[hsl(240_18%_7%/0.72)] px-6 backdrop-blur-xl">
         {/* Org name */}
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Building2 className="w-4 h-4 text-slate-400" />
-          <span>ContractIQ</span>
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Building2 className="h-4 w-4 text-muted-foreground/70" />
+          <span className="font-semibold tracking-[-0.01em] text-foreground">ContractIQ</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -66,34 +66,38 @@ export function Topbar() {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-full pl-1 pr-3 py-1 transition-colors"
+                className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm text-muted-foreground transition-colors duration-150 ease-out-quint hover:bg-secondary hover:text-foreground"
               >
                 {/* Avatar circle */}
-                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(42_100%_60%)] to-[hsl(32_96%_48%)] text-xs font-bold text-[hsl(40_60%_10%)] shadow-sm">
                   {user.initials}
                 </div>
-                <span className="font-medium max-w-[140px] truncate">{user.name}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="max-w-[140px] truncate font-medium">{user.name}</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-200 ease-out-quint", menuOpen && "rotate-180")} />
               </button>
 
               {menuOpen && (
                 <>
                   {/* Click-away overlay */}
                   <div
-                    className="fixed inset-0 z-10"
+                    className="fixed inset-0 z-40"
                     onClick={() => setMenuOpen(false)}
                   />
-                  {/* Dropdown */}
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-20 py-1 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{user.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                  {/* Dropdown — solid opaque surface, own stacking context above the
+                      blurred header so it never renders translucent. */}
+                  <div
+                    className="animate-fade-in absolute right-0 top-full z-50 mt-2 w-60 origin-top-right overflow-hidden rounded-xl border border-border py-1 shadow-lg"
+                    style={{ backgroundColor: "hsl(240 17% 11%)" }}
+                  >
+                    <div className="border-b border-border/70 px-4 py-3">
+                      <p className="truncate text-sm font-semibold text-foreground">{user.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="h-4 w-4" />
                       Sign out
                     </button>
                   </div>

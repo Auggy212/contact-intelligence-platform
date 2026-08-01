@@ -7,3 +7,11 @@ export function useAuditLog(skip = 0, limit = 50, action?: string) {
     queryFn: () => auditApi.list(skip, limit, action),
   })
 }
+
+export function useProjectAudit(projectId: string, limit = 5) {
+  return useQuery({
+    queryKey: ["audit-log", "project", projectId, limit],
+    queryFn: () => auditApi.list(0, limit, undefined, projectId),
+    enabled: !!projectId,
+  })
+}

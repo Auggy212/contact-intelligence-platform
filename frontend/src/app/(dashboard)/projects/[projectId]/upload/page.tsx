@@ -28,16 +28,17 @@ import { cn } from "@/lib/utils"
 
 const FILE_ROLES: FileRole[] = ["A", "B", "C"]
 
+// Dark tinted surfaces + a coloured left accent per role (readable on ink).
 const roleAccent: Record<FileRole, string> = {
-  A: "border-blue-200 bg-blue-50/50",
-  B: "border-green-200 bg-green-50/50",
-  C: "border-orange-200 bg-orange-50/50",
+  A: "border-sev-low-border bg-sev-low-bg/40",
+  B: "border-success-border bg-success-bg/40",
+  C: "border-sev-medium-border bg-sev-medium-bg/40",
 }
 
 const roleIconColor: Record<FileRole, string> = {
-  A: "text-blue-600 bg-blue-100",
-  B: "text-green-600 bg-green-100",
-  C: "text-orange-600 bg-orange-100",
+  A: "text-sev-low bg-sev-low-bg",
+  B: "text-success bg-success-bg",
+  C: "text-sev-medium bg-sev-medium-bg",
 }
 
 function ConfirmDeleteFile({
@@ -132,7 +133,7 @@ function UploadZone({ role, projectId }: { role: FileRole; projectId: string }) 
         <CardContent className="pt-0">
           {existing ? (
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-white border">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-background/60 border border-border">
                 <FileText className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 truncate">{existing.original_filename}</p>
@@ -163,7 +164,7 @@ function UploadZone({ role, projectId }: { role: FileRole; projectId: string }) 
               {...getRootProps()}
               className={cn(
                 "border-2 border-dashed rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer transition-colors",
-                isDragActive ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-slate-300 hover:bg-white/50"
+                isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/40 hover:bg-secondary/50"
               )}
             >
               <input {...getInputProps()} />

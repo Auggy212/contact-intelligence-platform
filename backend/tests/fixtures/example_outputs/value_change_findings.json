@@ -1,0 +1,125 @@
+{
+  "_comment": "Example finding outputs produced by the new value-diff + clause-type pipeline",
+
+  "example_1_payment_days_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Payment Terms: 30 days → 90 days",
+    "description": "[Clause Type: payment] Payment Terms changed from 30 days to 90 days. This is unfavourable — a higher value increases risk or cost for the client. Text similarity to template clause 'PAYMENT TERMS': 87%.",
+    "recommendation": "Review this change. Payment Terms changed from 30 days to 90 days. This is unfavourable — payment terms exceeding 45 days may violate the MSME Act.",
+    "confidence": 0.72,
+    "risk_score": 7,
+    "clause_type": "payment",
+    "reasoning_trace": "clause_type=payment; field=payment_days; old=30.0; new=90.0; change_pct=200.0%; text_similarity=0.872; heading_matched=true",
+    "reviewer_status": "pending"
+  },
+
+  "example_2_advance_percent_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Advance Payment: 10.0% → 40.0%",
+    "description": "[Clause Type: payment] Advance Payment changed from 10.0% to 40.0%. This is unfavourable — a higher value increases risk or cost for the client. Text similarity to template clause 'PAYMENT TERMS': 83%.",
+    "recommendation": "Review this change. Advance payment cap increased from 10% to 40% — four times the company standard.",
+    "confidence": 0.68,
+    "risk_score": 7,
+    "clause_type": "payment",
+    "reasoning_trace": "clause_type=payment; field=advance_percent; old=10.0; new=40.0; change_pct=300.0%; text_similarity=0.831; heading_matched=true",
+    "reviewer_status": "pending"
+  },
+
+  "example_3_liability_cap_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Liability Cap: 12.0 months → 6.0 months",
+    "description": "[Clause Type: liability] Liability Cap changed from 12.0 months to 6.0 months. This is unfavourable — a lower value weakens client protection. Text similarity to template clause 'LIABILITY AND INDEMNIFICATION': 91%.",
+    "recommendation": "Review this change. The liability cap has been halved. Client protection is reduced for the same period of exposure.",
+    "confidence": 0.75,
+    "risk_score": 8,
+    "clause_type": "liability",
+    "reasoning_trace": "clause_type=liability; field=liability_cap_months; old=12.0; new=6.0; change_pct=-50.0%; text_similarity=0.913; heading_matched=true"
+  },
+
+  "example_4_termination_notice_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Termination Notice: 60.0 days → 15.0 days",
+    "description": "[Clause Type: termination] Termination Notice changed from 60.0 days to 15.0 days. This is unfavourable — a lower value weakens client protection. Text similarity to template clause 'TERMINATION': 88%.",
+    "recommendation": "Review this change. Termination notice below 60-day standard. Insufficient time for operational wind-down.",
+    "confidence": 0.73,
+    "risk_score": 7,
+    "clause_type": "termination",
+    "reasoning_trace": "clause_type=termination; field=notice_days; old=60.0; new=15.0; change_pct=-75.0%; text_similarity=0.882; heading_matched=true"
+  },
+
+  "example_5_contract_value_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Contract Value: ₹50.00L → ₹150.00L",
+    "description": "[Clause Type: payment] Contract Value changed from ₹50.00L to ₹150.00L. This is unfavourable — a higher value increases risk or cost for the client. Text similarity to template clause 'PAYMENT TERMS': 79%.",
+    "recommendation": "Contract value ceiling has been tripled. This requires Board and Finance approval.",
+    "confidence": 0.67,
+    "risk_score": 7,
+    "clause_type": "payment",
+    "reasoning_trace": "clause_type=payment; field=contract_value_inr; old=5000000.0; new=15000000.0; change_pct=200.0%; text_similarity=0.791"
+  },
+
+  "example_6_jurisdiction_change": {
+    "flag_type": "template_deviation",
+    "severity": "high",
+    "title": "[Value Change] Court / Jurisdiction: mumbai → new delhi",
+    "description": "[Clause Type: jurisdiction] Court / Jurisdiction changed from 'mumbai' to 'new delhi'. This is a material legal change requiring review. Text similarity to template clause 'DISPUTE RESOLUTION': 84%.",
+    "recommendation": "Review jurisdiction change. Litigating in New Delhi instead of Mumbai significantly increases cost for a Mumbai-based company.",
+    "confidence": 0.72,
+    "risk_score": 7,
+    "clause_type": "jurisdiction",
+    "reasoning_trace": "clause_type=jurisdiction; field=court_city; old=mumbai; new=new delhi; text_similarity=0.844; heading_matched=true"
+  },
+
+  "example_7_ip_ownership_reversal": {
+    "flag_type": "template_deviation",
+    "severity": "critical",
+    "title": "[Value Change] IP Ownership: client → vendor",
+    "description": "[Clause Type: intellectual_property] IP Ownership changed from 'client' to 'vendor'. This is a material legal change requiring review. Text similarity: 72%.",
+    "recommendation": "IP ownership has been reversed. Client pays for deliverables it does not own. Must be reverted to template position.",
+    "confidence": 0.70,
+    "risk_score": 10,
+    "clause_type": "intellectual_property",
+    "reasoning_trace": "clause_type=intellectual_property; field=ip_owner; old=client; new=vendor; text_similarity=0.718"
+  },
+
+  "example_8_semantic_finding": {
+    "flag_type": "template_deviation",
+    "severity": "critical",
+    "title": "[Semantic] Liability cap removed or unlimited — deviated from template",
+    "description": "Concept-level analysis: 'Liability cap removed or unlimited' violation detected. This finding is based on the legal meaning of the clause, not just wording similarity. Clause excerpt: \"The Vendor's liability under this Agreement shall be unlimited and shall not be capped.\"",
+    "recommendation": "Liability must be capped. Unlimited liability exposes the vendor to catastrophic financial risk.",
+    "confidence": 0.588,
+    "risk_score": 10,
+    "clause_type": null,
+    "reasoning_trace": "semantic_concept='Liability cap removed or unlimited'; action='deviated from template'; clause='LIABILITY AND INDEMNIFICATION'"
+  },
+
+  "example_9_clause_missing": {
+    "flag_type": "clause_missing",
+    "severity": "high",
+    "title": "Template clause missing from draft: MSME late-payment interest",
+    "description": "[Clause Type: payment] This template clause is absent or substantially removed from the proposed draft (best match in B: 12%). Risk keywords present: indemnification, liability.",
+    "recommendation": "Confirm whether this clause was intentionally omitted; if not, re-add from the template.",
+    "confidence": 0.562,
+    "risk_score": 7,
+    "clause_type": "payment",
+    "reasoning_trace": "clause_type=payment; best_match_in_B=0.121; below_threshold=0.55"
+  },
+
+  "example_10_vendor_redline_with_value_diff": {
+    "flag_type": "vendor_redline",
+    "severity": "high",
+    "title": "Vendor change: PAYMENT TERMS",
+    "description": "[Clause Type: payment] Text similarity B→C: 87%. 1 line(s) added, 1 line(s) removed. Risk: Payment terms removed.\nValue-level changes detected:\n  • Payment Terms: 90 days → 45 days (decreased, 50% change)",
+    "recommendation": "Review the vendor's modifications carefully. Ensure changes to liability, payment, termination, or IP clauses are approved by legal counsel.",
+    "confidence": 0.748,
+    "risk_score": 7,
+    "clause_type": "payment",
+    "reasoning_trace": "clause_type=payment; similarity=0.872; added_lines=1; removed_lines=1; ooxml=true; value_changes=1; matched_b='PAYMENT TERMS'"
+  }
+}

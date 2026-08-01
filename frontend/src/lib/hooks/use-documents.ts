@@ -5,6 +5,28 @@ import { toast } from "sonner"
 
 export const docKeys = {
   list: (projectId: string) => ["documents", projectId] as const,
+  content: (projectId: string, fileId: string) => ["doc-content", projectId, fileId] as const,
+  clauses: (projectId: string, fileId: string) => ["doc-clauses", projectId, fileId] as const,
+}
+
+// Fetch the original file bytes for in-browser rendering (Verify view)
+export function useDocumentContent(projectId: string, fileId: string | null) {
+  return useQuery({
+    queryKey: docKeys.content(projectId, fileId ?? ""),
+    queryFn: () => documentsApi.getContent(projectId, fileId!),
+    enabled: !!projectId && !!fileId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+// Fetch all parsed clauses for one file (Verify view clause-to-finding mapping)
+export function useFileClauses(projectId: string, fileId: string | null) {
+  return useQuery({
+    queryKey: docKeys.clauses(projectId, fileId ?? ""),
+    queryFn: () => documentsApi.listClauses(projectId, fileId!),
+    enabled: !!projectId && !!fileId,
+    staleTime: 5 * 60 * 1000,
+  })
 }
 
 export function useDocuments(projectId: string) {
@@ -12,6 +34,8 @@ export function useDocuments(projectId: string) {
     queryKey: docKeys.list(projectId),
     queryFn: () => documentsApi.list(projectId),
     enabled: !!projectId,
+    staleTime: 0,           // always re-fetch when component mounts
+    refetchOnMount: true,
     refetchInterval: (query) => {
       const docs = query.state.data
       if (!docs) return false

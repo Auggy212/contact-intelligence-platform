@@ -40,6 +40,12 @@ class ClauseFlagOut(IDSchema, TimestampSchema):
     confidence: float | None
     reasoning_trace: str | None
     risk_score: int | None
+    # Clause classification and value diff evidence
+    clause_type: str | None
+    value_changes: Any | None
+    # Deterministic modification suggestion + fix priority
+    suggestion: Any | None
+    priority: str | None
     # Law citation fields (populated for law_validation task findings)
     law_act_name: str | None
     law_section_number: str | None
