@@ -102,8 +102,14 @@ PLAN_LIMITS: dict[str, dict] = {
     },
 }
 
-# Vector embedding dimensions for voyage-law-2
+# Vector embedding dimensions for voyage-law-2 (clause-level, legacy)
 EMBEDDING_DIMENSIONS = 1024
+
+# Chunk-level embedding dimensions (Phase 6). Default provider is NVIDIA
+# nv-embedqa-e5-v5 = 1024. If you switch EMBEDDING_PROVIDER to one with a
+# different dim (e.g. local bge-small = 384, openai = 1536) you must re-embed
+# into a fresh collection; the vector column below is sized for the default.
+CHUNK_EMBEDDING_DIMENSIONS = 1024
 
 # Max clause text length for embedding (characters)
 MAX_CLAUSE_LENGTH = 8000

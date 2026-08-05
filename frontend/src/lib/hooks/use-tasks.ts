@@ -10,6 +10,7 @@ export const taskKeys = {
   clause: (projectId: string, clauseId: string) => ["clause", projectId, clauseId] as const,
   findings: (projectId: string, filters?: object) => ["findings", projectId, filters] as const,
   modifications: (projectId: string) => ["modifications", projectId] as const,
+  similar: (projectId: string, flagId: string) => ["similar-clauses", projectId, flagId] as const,
 }
 
 export function useModifications(projectId: string) {
@@ -46,6 +47,22 @@ export function useClause(projectId: string, clauseId: string | null) {
     queryKey: taskKeys.clause(projectId, clauseId ?? ""),
     queryFn: () => tasksApi.getClause(projectId, clauseId!),
     enabled: !!projectId && !!clauseId,
+  })
+}
+
+// Phase 6: related clauses in the same contract for a finding. Only fetched when
+// `enabled` (e.g. the detail sheet is open). Fails soft — if semantic search is
+// off/unavailable the caller just shows nothing.
+export function useSimilarClauses(
+  projectId: string,
+  flagId: string | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: taskKeys.similar(projectId, flagId ?? ""),
+    queryFn: () => tasksApi.getSimilarClauses(projectId, flagId!),
+    enabled: !!projectId && !!flagId && enabled,
+    retry: false,
   })
 }
 

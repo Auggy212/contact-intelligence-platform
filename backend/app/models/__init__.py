@@ -3,6 +3,7 @@ from app.models.audit import AuditLog
 from app.models.billing import Subscription, UsageRecord
 from app.models.checklist import ChecklistRule
 from app.models.clause import ClauseFlag, ParsedClause
+from app.models.embedding import ClauseEmbedding
 from app.models.library import ClauseLibraryEntry
 from app.models.organization import Organization, Workspace
 from app.models.project import Project, ProjectFile
@@ -18,6 +19,7 @@ __all__ = [
     "ProjectFile",
     "ParsedClause",
     "ClauseFlag",
+    "ClauseEmbedding",
     "AnalysisTask",
     "TaskResult",
     "ClauseLibraryEntry",

@@ -40,7 +40,19 @@ dependencies = [
     # AI & embeddings
     "anthropic>=0.28.0",
     "voyageai>=0.2.3",
-    "qdrant-client>=1.9.1",
+    # Keep the client's MAJOR/MINOR within one of the Qdrant SERVER image
+    # (qdrant/qdrant:v1.8.4 in docker-compose). A client too far ahead (e.g. 1.18)
+    # calls HTTP endpoints the 1.8 server doesn't have (404s). Our store also
+    # supports both search() and query_points() so a compatible-range bump is safe.
+    "qdrant-client>=1.8.0,<1.10",
+    # openai: used for both OpenAI and any OpenAI-COMPATIBLE endpoint
+    # (NVIDIA NIM, Groq) — one client, many providers via base_url.
+    "openai>=1.40",
+    # Local, no-API-key embedding fallback (EMBEDDING_PROVIDER=local). Pulls in
+    # torch (~2GB) but runs fully offline after the first model download, so the
+    # semantic pipeline works with no key/credits. Kept as a normal dependency so
+    # the fallback is always installable; NVIDIA remains the default.
+    "sentence-transformers>=2.7.0",
 
     # File storage
     "boto3>=1.34.0",

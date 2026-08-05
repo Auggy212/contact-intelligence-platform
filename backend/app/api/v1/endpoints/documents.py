@@ -100,8 +100,39 @@ async def upload_document(
             session.add(pc)
         pf.parse_status = "completed"
         await session.flush()
+
+        # Phase 6: embed the parsed clauses inline (real NVIDIA + Qdrant) when
+        # embeddings are enabled. Independent of APP_ENV, so testing mode can run
+        # the full semantic pipeline. Disabled by default (and in pytest) so no
+        # API credits are spent unless you opt in via ENABLE_EMBEDDINGS=true.
+        if settings.ENABLE_EMBEDDINGS:
+            # embed_document() reads clauses in its OWN session, so the parsed
+            # rows must be committed first for it to see them.
+            await session.commit()
+            from app.services.embedding_service import embed_document
+
+            try:
+                await embed_document(str(pf.id), tenant_id)
+            except Exception as exc:
+                # Don't fail the upload if embedding hiccups — the document is
+                # already parsed and stored; embeddings can be re-run.
+                from app.core.logging import get_logger
+
+                get_logger(__name__).error(
+                    "inline_embed_failed", file_id=str(pf.id), error=str(exc)
+                )
     else:
-        parse_document_task.delay(str(pf.id), tenant_id)
+        # Parse first, then embed the resulting chunks — embed runs only if parse
+        # succeeds. immutable() so the chained task keeps its own args (the parse
+        # result is not injected as a first positional arg).
+        from celery import chain
+
+        from app.workers.embed_tasks import embed_document_task
+
+        chain(
+            parse_document_task.si(str(pf.id), tenant_id),
+            embed_document_task.si(str(pf.id), tenant_id),
+        ).apply_async()
 
     # Audit log
     from app.services.audit_service import AuditService

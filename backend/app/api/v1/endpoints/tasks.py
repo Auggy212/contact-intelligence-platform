@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session, get_tenant_id, get_user_id, require_reviewer_or_above
 from app.schemas.task import ClauseFlagOut, ReviewFlagRequest, TaskOut, TaskTriggerRequest
+from app.services.retrieval_service import get_hybrid_retriever
 from app.services.task_service import TaskService
 from app.core.logging import get_logger
 
@@ -387,6 +388,73 @@ async def list_findings(
     query = query.order_by(ClauseFlag.severity, ClauseFlag.created_at.desc())
     result = await session.execute(query)
     return result.scalars().all()
+
+
+@router.get("/projects/{project_id}/findings/{flag_id}/similar")
+async def find_similar_clauses(
+    project_id: uuid.UUID,
+    flag_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_session),
+    limit: int = 5,
+):
+    """
+    Semantically-related clauses IN THE SAME CONTRACT for a finding (Phase 6).
+
+    Powers the 'Related clauses' panel in the finding detail sheet: uses the
+    finding's clause text as a query, runs hybrid retrieval scoped to this
+    project, and returns related clauses — excluding the finding's own clause.
+    Requires ENABLE_EMBEDDINGS (there are no vectors to search otherwise).
+    """
+    from sqlalchemy import select
+
+    from app.core.config import settings
+    from app.core.exceptions import NotFoundError, ValidationError
+    from app.models.clause import ClauseFlag, ParsedClause
+
+    # The finding must exist and belong to this tenant/project.
+    flag = (await session.execute(
+        select(ClauseFlag).where(
+            ClauseFlag.id == flag_id,
+            ClauseFlag.project_id == project_id,
+            ClauseFlag.organization_id == uuid.UUID(tenant_id),
+        )
+    )).scalar_one_or_none()
+    if not flag:
+        raise NotFoundError("Finding not found")
+
+    if not settings.ENABLE_EMBEDDINGS:
+        raise ValidationError(
+            "Semantic features are disabled. Set ENABLE_EMBEDDINGS=true and re-upload "
+            "the document so its clauses get embedded."
+        )
+
+    # Query text = the finding's clause body (fall back to the finding title).
+    clause = (await session.execute(
+        select(ParsedClause).where(ParsedClause.id == flag.clause_id)
+    )).scalar_one_or_none()
+    query_text = (clause.body_text if clause else None) or flag.title
+
+    scope = {"organization_id": tenant_id, "project_id": str(project_id)}
+    retriever = get_hybrid_retriever(session)
+    # over-fetch by one so we can drop the clause's own chunk and still fill `limit`
+    hits = await retriever.retrieve(query_text, scope_filter=scope, limit=limit + 1)
+
+    self_clause_id = str(flag.clause_id)
+    results = []
+    for h in hits:
+        hit_clause_id = str((h.get("payload") or {}).get("clause_id", ""))
+        if hit_clause_id == self_clause_id:
+            continue  # exclude the finding's own clause
+        results.append({
+            "clause_id": hit_clause_id,
+            "chunk_text": h["chunk_text"],
+            "score": h["score"],
+        })
+        if len(results) >= limit:
+            break
+
+    return {"finding_id": str(flag_id), "count": len(results), "results": results}
 
 
 @router.get("/projects/{project_id}/modifications")

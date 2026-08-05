@@ -69,6 +69,42 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str = ""
     QDRANT_LAW_COLLECTION: str = "indian_law_corpus"
 
+    # ── Pluggable AI providers (Phase 6 — semantic/RAG) ──────────────────────
+    # Each capability switches INDEPENDENTLY via env var, no code change.
+    # Defaults: NVIDIA NIM embeddings (free tier, retrieval-tuned, OpenAI-compatible)
+    # with local bge as an offline fallback.
+    #   EMBEDDING_PROVIDER: nvidia | local | voyage | openai
+    #   LLM_PROVIDER:       nvidia | groq | gemini | anthropic | bedrock
+    #   VECTOR_STORE:       qdrant | pgvector
+    EMBEDDING_PROVIDER: Literal["nvidia", "local", "voyage", "openai"] = "nvidia"
+    LLM_PROVIDER: Literal["nvidia", "groq", "gemini", "anthropic", "bedrock"] = "groq"
+    VECTOR_STORE: Literal["qdrant", "pgvector"] = "qdrant"
+
+    # Master switch for the Phase 6 semantic pipeline (embed-on-upload + search).
+    # Kept INDEPENDENT of APP_ENV on purpose: you can run the app in `testing`
+    # mode (easy auth) AND still exercise real embeddings by setting this true.
+    # The pytest suite forces it FALSE so automated tests never spend API credits.
+    ENABLE_EMBEDDINGS: bool = False
+
+    # NVIDIA NIM (build.nvidia.com) — OpenAI-compatible endpoint, key starts nvapi-.
+    NVIDIA_API_KEY: str = ""
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_EMBEDDING_MODEL: str = "nvidia/nv-embedqa-e5-v5"
+    NVIDIA_EMBEDDING_DIM: int = 1024
+    NVIDIA_LLM_MODEL: str = "meta/llama-3.3-70b-instruct"
+
+    # Local embedding model (sentence-transformers). bge-small = 384 dims.
+    LOCAL_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+    LOCAL_EMBEDDING_DIM: int = 384
+
+    # Free hosted-API LLM keys (only the chosen provider's key is needed).
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    OPENAI_API_KEY: str = ""
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+
     # ── Billing (Stripe) ──────────────────────────────────────────────────────
     STRIPE_SECRET_KEY: str = "sk_test_placeholder"
     STRIPE_PUBLISHABLE_KEY: str = "pk_test_placeholder"
@@ -111,6 +147,27 @@ class Settings(BaseSettings):
             not self.ANTHROPIC_API_KEY.startswith("sk-ant-placeholder")
             and not self.VOYAGE_API_KEY.startswith("pa-placeholder")
         )
+
+    @property
+    def active_embedding_dim(self) -> int:
+        """
+        Vector dimension of the CURRENTLY selected embedding provider. Different
+        providers produce different dims (nvidia 1024, local bge 384, openai 1536,
+        voyage 1024). Used to keep each provider's vectors in its OWN collection so
+        switching EMBEDDING_PROVIDER never mixes incompatible dimensions.
+        """
+        return {
+            "nvidia": self.NVIDIA_EMBEDDING_DIM,
+            "local": self.LOCAL_EMBEDDING_DIM,
+            "openai": 1536,   # text-embedding-3-small
+            "voyage": 1024,   # voyage-law-2
+        }.get(self.EMBEDDING_PROVIDER, self.NVIDIA_EMBEDDING_DIM)
+
+    @property
+    def chunk_collection_name(self) -> str:
+        """Qdrant collection for chunk vectors, suffixed by the active dimension so
+        e.g. nvidia (1024) and local (384) never collide in one collection."""
+        return f"contract_chunks_{self.active_embedding_dim}"
 
 
 @lru_cache

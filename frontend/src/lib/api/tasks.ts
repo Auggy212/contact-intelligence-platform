@@ -37,4 +37,25 @@ export const tasksApi = {
 
   getModifications: (projectId: string): Promise<ModificationsResponse> =>
     apiClient.get(`/projects/${projectId}/modifications`).then((r) => r.data),
+
+  // Phase 6: semantically-related clauses in the same contract for a finding.
+  getSimilarClauses: (
+    projectId: string,
+    flagId: string,
+  ): Promise<SimilarClausesResponse> =>
+    apiClient
+      .get(`/projects/${projectId}/findings/${flagId}/similar`)
+      .then((r) => r.data),
+}
+
+export interface SimilarClause {
+  clause_id: string
+  chunk_text: string
+  score: number
+}
+
+export interface SimilarClausesResponse {
+  finding_id: string
+  count: number
+  results: SimilarClause[]
 }

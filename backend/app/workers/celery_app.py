@@ -9,6 +9,7 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
     include=[
         "app.workers.parse_tasks",
+        "app.workers.embed_tasks",
         "app.workers.agent_tasks",
         "app.workers.email_tasks",
         "app.workers.beat_tasks",
@@ -26,6 +27,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_routes={
         "app.workers.parse_tasks.*": {"queue": "parsing"},
+        "app.workers.embed_tasks.*": {"queue": "parsing"},
         "app.workers.agent_tasks.*": {"queue": "agents"},
         "app.workers.email_tasks.*": {"queue": "email"},
         "app.workers.beat_tasks.*": {"queue": "email"},

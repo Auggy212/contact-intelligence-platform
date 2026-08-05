@@ -25,6 +25,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # Also patch the settings singleton (loaded by earlier imports) to testing mode.
 from app.core.config import settings as _settings
 _settings.APP_ENV = "testing"  # type: ignore[assignment]
+# Hard guarantee: the test suite NEVER spends embedding-API credits. Any test
+# that needs the Phase 6 path on must flip this locally (and mock the provider).
+_settings.ENABLE_EMBEDDINGS = False  # type: ignore[assignment]
 
 from app.core.config import settings
 from app.core.database import Base, get_db_no_rls

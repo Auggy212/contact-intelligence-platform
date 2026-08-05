@@ -9,9 +9,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SeverityBadge } from "./severity-badge"
-import { useReviewFinding, useClause } from "@/lib/hooks/use-tasks"
+import { useReviewFinding, useClause, useSimilarClauses } from "@/lib/hooks/use-tasks"
 import type { ClauseFlag } from "@/lib/types/api"
-import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp, Info, Library, FileText, Wrench, ArrowRight, Pencil, AlertTriangle, Target } from "lucide-react"
+import { CheckCircle2, XCircle, BookOpen, ChevronDown, ChevronUp, Info, Library, FileText, Wrench, ArrowRight, Pencil, AlertTriangle, Target, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { libraryApi } from "@/lib/api/library"
@@ -53,6 +53,14 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
   const { data: clause, isLoading: clauseLoading } = useClause(
     projectId,
     finding?.clause_id ?? null,
+  )
+
+  // Phase 6: semantically-related clauses in the same contract. Only fetched
+  // while the sheet is open; fails soft (empty) if semantic search is disabled.
+  const { data: similar, isLoading: similarLoading } = useSimilarClauses(
+    projectId,
+    finding?.id ?? null,
+    open,
   )
 
   function handleReview(status: "approved" | "rejected") {
@@ -205,6 +213,46 @@ export function FindingDetailSheet({ finding, projectId, open, onOpenChange }: F
               )}
             </div>
           </div>
+
+          {/* ── Related clauses (Phase 6 — semantic) ── */}
+          {(similarLoading || (similar && similar.results.length > 0)) && (
+            <div className="rounded-lg border border-violet-200 overflow-hidden">
+              <div className="flex items-center gap-2 bg-violet-50 border-b border-violet-200 px-4 py-2.5">
+                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wide">
+                  Related clauses in this contract
+                </h4>
+                <span className="ml-auto text-[0.65rem] text-violet-400">semantic</span>
+              </div>
+              <div className="p-3 space-y-2">
+                {similarLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/6" />
+                  </div>
+                ) : (
+                  similar!.results.map((r) => (
+                    <div
+                      key={r.clause_id}
+                      className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs text-slate-700 leading-relaxed line-clamp-3">
+                          {r.chunk_text}
+                        </p>
+                        <span className="shrink-0 text-[0.65rem] font-medium text-violet-500 tabular-nums">
+                          {(r.score * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <p className="pt-1 text-[0.65rem] text-slate-400">
+                  Found by meaning (embeddings), not just keywords.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ── Suggested Fix (deterministic modification suggestion) ── */}
           {finding.suggestion && (
